@@ -1,0 +1,2422 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Controls Master Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Barlow+Condensed:wght@300;600;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root {
+  --bg: #f5f7f9;
+  --surface: #ffffff;
+  --surface2: #fafbfc;
+  --border: #d0d7de;
+  --accent: #2e5c9a;
+  --accent2: #ff6b2b;
+  --accent3: #1f7244;
+  --danger: #c00000;
+  --warning: #ffc000;
+  --success: #00b050;
+  --text: #1f2937;
+  --text-dim: #6b7280;
+  --mono: 'IBM Plex Mono', monospace;
+  --display: 'Barlow Condensed', sans-serif;
+  --body: 'Barlow', sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── GRID NOISE TEXTURE ─── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: 
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(46,92,154,0.02) 39px, rgba(46,92,154,0.02) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(46,92,154,0.02) 39px, rgba(46,92,154,0.02) 40px);
+  pointer-events: none; z-index: 0;
+}
+
+/* ─── LAYOUT ─── */
+.app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: 72px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px 0; gap: 6px;
+  position: sticky; top: 0; height: 100vh;
+  flex-shrink: 0;
+}
+.sidebar-logo {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+  margin-bottom: 20px;
+  padding: 8px 0;
+}
+.nav-btn {
+  width: 44px; height: 44px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  position: relative;
+}
+.nav-btn:hover, .nav-btn.active {
+  background: rgba(46,92,154,0.1);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.nav-btn .tooltip {
+  position: absolute; left: 60px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 4px 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 100;
+}
+.nav-btn:hover .tooltip { opacity: 1; }
+
+/* ─── MAIN ─── */
+.main { flex: 1; padding: 24px; overflow-y: auto; }
+
+/* ─── HEADER ─── */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.page-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 28px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.page-title span { color: var(--accent); }
+.badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.badge-at-risk { background: rgba(192,0,0,0.1); color: var(--danger); border: 1px solid rgba(192,0,0,0.3); }
+.badge-ok { background: rgba(0,176,80,0.1); color: var(--success); border: 1px solid rgba(0,176,80,0.3); }
+
+/* ─── TABS ─── */
+.tabs {
+  display: flex; gap: 4px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.tab {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 10px 18px;
+  background: transparent;
+  border: none; border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative; top: 1px;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-step {
+  font-family: var(--mono);
+  font-size: 9px;
+  display: block;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+.tab.active .tab-step { color: rgba(0,201,255,0.6); }
+
+/* ─── PANELS ─── */
+.panel { display: none; }
+.panel.active { display: block; animation: fadeSlide 0.3s ease; }
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.card-title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title::before {
+  content: '';
+  width: 3px; height: 14px;
+  background: var(--accent);
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+/* ─── KPI CARDS ─── */
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  position: relative; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+}
+.kpi-card.accent::after { background: linear-gradient(90deg, var(--accent), #4a7cbd); }
+.kpi-card.danger::after { background: linear-gradient(90deg, var(--danger), #d63031); }
+.kpi-card.success::after { background: linear-gradient(90deg, var(--success), #27ae60); }
+.kpi-card.warning::after { background: linear-gradient(90deg, var(--warning), #ffb300); }
+.kpi-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.kpi-value {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 34px;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+.kpi-sub {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* ─── FORM ELEMENTS ─── */
+.form-group { margin-bottom: 14px; }
+.form-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 13px;
+  transition: border-color 0.2s;
+  outline: none;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(46,92,154,0.1);
+}
+.form-select option { background: var(--surface); }
+.form-textarea { min-height: 80px; resize: vertical; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ─── BUTTONS ─── */
+.btn {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  border-radius: 5px;
+  border: none; cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+.btn-primary:hover { background: #3a7bb8; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(46,92,154,0.2); }
+.btn-danger {
+  background: rgba(192,0,0,0.1);
+  color: var(--danger);
+  border: 1px solid rgba(192,0,0,0.3);
+}
+.btn-outline {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border);
+}
+.btn-outline:hover { border-color: var(--accent); }
+.btn-sm { padding: 5px 10px; font-size: 10px; }
+
+/* ─── TABLES ─── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.data-table th {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(30,45,66,0.5);
+  vertical-align: middle;
+}
+.data-table tr:hover td { background: rgba(46,92,154,0.04); }
+.data-table input[type="number"], .data-table input[type="text"], .data-table input[type="date"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  width: 100%;
+  outline: none;
+}
+.data-table input:focus { border-color: var(--accent); }
+
+/* ─── STATUS PILLS ─── */
+.pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.pill-critical { background: rgba(192,0,0,0.1); color: #c00000; border: 1px solid rgba(192,0,0,0.3); font-weight: 600; }
+.pill-progress { background: rgba(255,192,0,0.1); color: #ff9800; border: 1px solid rgba(255,192,0,0.3); font-weight: 600; }
+.pill-done { background: rgba(0,176,80,0.1); color: #00b050; border: 1px solid rgba(0,176,80,0.3); font-weight: 600; }
+.pill-hold { background: rgba(107,114,128,0.1); color: var(--text-dim); border: 1px solid var(--border); }
+.pill-not-started { background: rgba(209,213,219,0.5); color: var(--text-dim); border: 1px solid var(--border); }
+
+/* ─── GANTT ─── */
+.gantt-wrapper { overflow-x: auto; }
+.gantt-grid {
+  min-width: 700px;
+  display: grid;
+  font-size: 11px;
+}
+.gantt-row {
+  display: grid;
+  grid-template-columns: 200px 80px 80px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(30,45,66,0.4);
+}
+.gantt-row:hover { background: rgba(46,92,154,0.03); }
+.gantt-header {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.gantt-bar-container {
+  position: relative;
+  height: 22px;
+  background: rgba(30,45,66,0.4);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.gantt-bar {
+  position: absolute;
+  top: 3px; height: 16px;
+  border-radius: 2px;
+  transition: all 0.3s;
+}
+.gantt-bar.critical { background: var(--danger); box-shadow: 0 0 8px rgba(192,0,0,0.3); }
+.gantt-bar.normal { background: var(--accent); }
+.gantt-bar.actual { background: var(--success); opacity: 0.85; top: 3px; }
+.gantt-actual-bar {
+  position: absolute;
+  top: 3px; height: 16px;
+  border-radius: 2px;
+  background: var(--success);
+  opacity: 0.75;
+}
+.gantt-today {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: var(--warning);
+  box-shadow: 0 0 6px var(--warning);
+  z-index: 5;
+}
+
+/* ─── EVM SECTION ─── */
+.evm-formula {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.evm-formula span { color: var(--accent2); font-weight: 600; }
+.evm-result-positive { color: var(--accent3); font-weight: 600; }
+.evm-result-negative { color: var(--danger); font-weight: 600; }
+.evm-result-neutral { color: var(--warning); font-weight: 600; }
+
+/* ─── RISK HEATMAP ─── */
+.risk-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+  margin-top: 12px;
+}
+.risk-cell {
+  height: 40px;
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.risk-cell:hover { transform: scale(1.05); z-index: 2; }
+.risk-low { background: rgba(0,176,80,0.12); color: #00b050; border: 1px solid rgba(0,176,80,0.2); }
+.risk-med { background: rgba(255,192,0,0.15); color: #ff9800; border: 1px solid rgba(255,192,0,0.3); }
+.risk-high { background: rgba(255,107,43,0.15); color: #ff6b2b; border: 1px solid rgba(255,107,43,0.3); }
+.risk-extreme { background: rgba(192,0,0,0.15); color: #c00000; border: 1px solid rgba(192,0,0,0.4); font-weight: 600; }
+
+/* ─── PROGRESS BAR ─── */
+.progress-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.progress-fill.accent { background: var(--accent); }
+.progress-fill.success { background: var(--success); }
+.progress-fill.danger { background: var(--danger); }
+.progress-fill.warning { background: var(--warning); }
+
+/* ─── NOTIFICATION/WARNING BAR ─── */
+.alert-bar {
+  background: rgba(192,0,0,0.05);
+  border: 1px solid rgba(192,0,0,0.2);
+  border-left: 4px solid var(--danger);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #9b1c1c;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 16px;
+}
+.alert-bar-warning {
+  background: rgba(255,192,0,0.05);
+  border-color: rgba(255,192,0,0.2);
+  border-left-color: var(--warning);
+  color: #92400e;
+}
+.alert-icon { font-size: 14px; }
+
+/* ─── CHART CONTAINER ─── */
+.chart-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  height: 280px;
+  position: relative;
+}
+
+/* ─── SECTION DIVIDER ─── */
+.section-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 20px 0 16px;
+}
+.section-divider-text {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.section-divider-line { flex: 1; height: 1px; background: var(--border); }
+
+/* ─── EARNED VALUE METER ─── */
+.ev-meter {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.ev-meter-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  width: 40px;
+}
+.ev-meter-track {
+  flex: 1; height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: visible;
+  position: relative;
+}
+.ev-meter-fill {
+  height: 100%;
+  border-radius: 4px;
+  position: relative;
+}
+.ev-meter-marker {
+  position: absolute;
+  top: -4px; 
+  width: 2px; height: 16px;
+  background: var(--warning);
+}
+.ev-meter-value {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  width: 60px;
+  text-align: right;
+}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 900px) {
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════
+   GLOSSARY TOOLTIP SYSTEM
+═══════════════════════════════════════ */
+.gloss {
+  border-bottom: 1px dashed rgba(0,201,255,0.5);
+  cursor: help;
+  position: relative;
+  display: inline;
+  color: inherit;
+  transition: color 0.15s;
+}
+.gloss:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* The floating tooltip bubble */
+#gloss-tooltip {
+  position: fixed;
+  z-index: 9999;
+  max-width: 280px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+#gloss-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+#gloss-tooltip-inner {
+  background: #ffffff;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(46,92,154,0.08);
+  position: relative;
+}
+#gloss-tooltip-inner::before {
+  content: '';
+  position: absolute;
+  top: -5px; left: 16px;
+  width: 8px; height: 8px;
+  background: #ffffff;
+  border-left: 1px solid var(--accent);
+  border-top: 1px solid var(--accent);
+  transform: rotate(45deg);
+}
+#gloss-en {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+#gloss-el {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text);
+  margin-bottom: 5px;
+  letter-spacing: 0.5px;
+}
+#gloss-desc {
+  font-family: var(--body);
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+#gloss-formula {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--accent2);
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: rgba(255,107,43,0.06);
+  border-radius: 4px;
+  border-left: 2px solid var(--accent2);
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">PCM Hub</div>
+  <button class="nav-btn active" onclick="switchTab('charter')" title="Charter">
+    📋<span class="tooltip">Project Charter</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab('wbs')" title="WBS">
+    🏗️<span class="tooltip">WBS Builder</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab('gantt')" title="Gantt">
+    📅<span class="tooltip">Gantt + Critical Path</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab('evm')" title="EVM">
+    📊<span class="tooltip">Earned Value Analysis</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab('risk')" title="Risk">
+    ⚠️<span class="tooltip">Risk Register</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab('dashboard')" title="Dashboard">
+    🎯<span class="tooltip">Executive Dashboard</span>
+  </button>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- HEADER -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">Project Controls <span>Master Hub</span></div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:4px;">
+        Planning Engineer Toolkit · PMBOK / P6 Framework
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="btn btn-outline btn-sm" onclick="saveProjectData()" title="Αποθήκευση όλων των δεδομένων">
+        💾 SAVE
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="loadProjectData()" title="Φόρτωση αποθηκευμένων δεδομένων">
+        📂 LOAD
+      </button>
+      <span id="header-status" class="badge badge-at-risk">● AT RISK</span>
+      <div style="text-align:right;font-family:var(--mono);font-size:10px;color:var(--text-dim);">
+        <div id="header-project">— No Project Loaded —</div>
+        <div id="header-period">Period: —</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" id="tab-charter" onclick="switchTab('charter')">
+      <span class="tab-step">STEP 1</span>Charter
+    </button>
+    <button class="tab" id="tab-wbs" onclick="switchTab('wbs')">
+      <span class="tab-step">STEP 2</span>WBS
+    </button>
+    <button class="tab" id="tab-gantt" onclick="switchTab('gantt')">
+      <span class="tab-step">STEP 3</span>Gantt
+    </button>
+    <button class="tab" id="tab-evm" onclick="switchTab('evm')">
+      <span class="tab-step">STEP 4</span>EVM
+    </button>
+    <button class="tab" id="tab-risk" onclick="switchTab('risk')">
+      <span class="tab-step">STEP 5</span>Risk
+    </button>
+    <button class="tab" id="tab-dashboard" onclick="switchTab('dashboard')">
+      <span class="tab-step">STEP 6</span>Dashboard
+    </button>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       PANEL 1: PROJECT CHARTER
+  ════════════════════════════════════════ -->
+  <div id="panel-charter" class="panel active">
+    <div class="alert-bar-warning alert-bar">
+      <span class="alert-icon">📌</span>
+      <span><strong>Βήμα 1 — Initiation:</strong> Ορισμός του Project Charter. Αυτό είναι ο «νόμος» του έργου. Χωρίς αυτό, δεν ξεκινάμε scheduling.</span>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Project Identity</div>
+        <div class="form-group">
+          <label class="form-label">Τίτλος Έργου</label>
+          <input class="form-input" id="c-title" type="text" placeholder="π.χ. Sunlight Industrial Area" oninput="updateHeader()">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Project Manager</label>
+            <input class="form-input" id="c-pm" type="text" placeholder="Όνομα PM">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Planning Engineer</label>
+            <input class="form-input" id="c-pe" type="text" placeholder="Όνομα PE">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Ημ/νία Έναρξης</label>
+            <input class="form-input" id="c-start" type="date" value="2026-01-01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ημ/νία Λήξης</label>
+            <input class="form-input" id="c-end" type="date" value="2026-04-30">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Τύπος Έργου</label>
+          <select class="form-select" id="c-type">
+            <option value="civil">Πολιτικό Έργο (Civil)</option>
+            <option value="industrial">Βιομηχανική Εγκατάσταση</option>
+            <option value="building">Κτηριακό Έργο</option>
+            <option value="road">Οδικό Δίκτυο</option>
+            <option value="water">Υδραυλικό Έργο</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Scope & Objectives</div>
+        <div class="form-group">
+          <label class="form-label">Project Objectives (SMART)</label>
+          <textarea class="form-textarea" id="c-objectives" placeholder="π.χ. Ολοκλήρωση οδοποιίας 35.000 m² έως Month 4 με προϋπολογισμό €2.5M και μηδενικά ατυχήματα"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">In Scope (Τι περιλαμβάνεται)</label>
+          <textarea class="form-textarea" id="c-inscope" placeholder="π.χ. Εκσκαφές, Ασφαλτόστρωση, Δίκτυα ΟΚΩ, Φύτευση" style="min-height:60px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Out of Scope (Τι ΔΕΝ περιλαμβάνεται)</label>
+          <textarea class="form-textarea" id="c-outscope" placeholder="π.χ. Κτηριακές εργασίες, Ηλεκτρολογικές εγκαταστάσεις κτηρίων" style="min-height:60px;"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Budget & Constraints</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Budget at Completion (BAC) €</label>
+            <input class="form-input" id="c-bac" type="number" placeholder="2500000" oninput="updateEVM()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contingency Reserve €</label>
+            <input class="form-input" id="c-reserve" type="number" placeholder="125000">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Διάρκεια (μήνες)</label>
+            <input class="form-input" id="c-duration" type="number" placeholder="4" min="1" max="60">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Μεθοδολογία</label>
+            <select class="form-select" id="c-method">
+              <option value="waterfall">Waterfall (Κατασκευαστικό)</option>
+              <option value="hybrid">Hybrid</option>
+              <option value="agile">Agile</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Key Assumptions</label>
+          <textarea class="form-textarea" id="c-assumptions" placeholder="π.χ. Χωρίς πλημμύρες, άδεια εκσκαφής εγκεκριμένη, τιμές υλικών σταθερές" style="min-height:60px;"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Stakeholders & Approvals</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Ρόλος</th><th>Όνομα</th><th>Εξουσιοδότηση</th>
+            </tr>
+          </thead>
+          <tbody id="stakeholder-body">
+            <tr>
+              <td><input type="text" value="Project Sponsor" style="background:transparent;border:none;color:var(--text);font-family:var(--body);font-size:12px;width:100%"></td>
+              <td><input type="text" placeholder="Αναθέτουσα Αρχή"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px">
+                <option>High</option><option>Medium</option><option>Low</option>
+              </select></td>
+            </tr>
+            <tr>
+              <td><input type="text" value="Project Manager" style="background:transparent;border:none;color:var(--text);font-family:var(--body);font-size:12px;width:100%"></td>
+              <td><input type="text" placeholder="Ανάδοχος ΑΕ"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px">
+                <option>High</option><option>Medium</option><option>Low</option>
+              </select></td>
+            </tr>
+            <tr>
+              <td><input type="text" value="Planning Engineer" style="background:transparent;border:none;color:var(--text);font-family:var(--body);font-size:12px;width:100%"></td>
+              <td><input type="text" placeholder="Εσύ"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px">
+                <option>High</option><option>Medium</option><option>Low</option>
+              </select></td>
+            </tr>
+            <tr>
+              <td><input type="text" value="Subcontractor" style="background:transparent;border:none;color:var(--text);font-family:var(--body);font-size:12px;width:100%"></td>
+              <td><input type="text" placeholder="Εταιρεία"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px">
+                <option>Medium</option><option>High</option><option>Low</option>
+              </select></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:12px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:6px;">CHARTER APPROVAL STATUS</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="checkbox" id="charter-approved" style="accent-color:var(--accent3);">
+            <label for="charter-approved" style="font-size:12px;cursor:pointer;">Charter Εγκεκριμένος — Project can proceed to Planning</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button class="btn btn-primary" onclick="switchTab('wbs')">Επόμενο: WBS Builder →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       PANEL 2: WBS
+  ════════════════════════════════════════ -->
+  <div id="panel-wbs" class="panel">
+    <div class="alert-bar">
+      <span class="alert-icon">🔴</span>
+      <span><strong>Βήμα 2 — WBS:</strong> Work Breakdown Structure. Σπάμε το έργο σε Work Packages. Κάθε γραμμή είναι μια δραστηριότητα που θα μπει στο Gantt.</span>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;display:flex;">
+        <span>WBS Matrix — Εισαγωγή Εργασιών</span>
+        <button class="btn btn-outline btn-sm" onclick="addWBSRow()">+ Προσθήκη Εργασίας</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="wbs-table">
+          <thead>
+            <tr>
+              <th style="width:70px">WBS ID</th>
+              <th>Περιγραφή Εργασίας</th>
+              <th style="width:100px">Κατηγορία</th>
+              <th style="width:80px">Ποσ. Έργου</th>
+              <th style="width:60px">Μονάδα</th>
+              <th style="width:90px">Budget €</th>
+              <th style="width:80px">Διάρκεια (d)</th>
+              <th style="width:70px">Critical</th>
+              <th style="width:50px">Del</th>
+            </tr>
+          </thead>
+          <tbody id="wbs-body">
+            <tr>
+              <td><input type="text" value="1.01" style="width:60px"></td>
+              <td><input type="text" value="Γενικές Εκσκαφές" style="min-width:180px"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px;width:90px">
+                <option value="earthwork">Χωματουργικά</option>
+                <option value="concrete">Σκυρόδεμα</option>
+                <option value="asphalt">Ασφαλτικά</option>
+                <option value="network">Δίκτυα ΟΚΩ</option>
+                <option value="landscape">Πράσινο</option>
+                <option value="other">Άλλο</option>
+              </select></td>
+              <td><input type="number" value="40000" oninput="recalcWBS()"></td>
+              <td><input type="text" value="m³" style="width:50px"></td>
+              <td><input type="number" value="320000" oninput="recalcWBS()"></td>
+              <td><input type="number" value="45" oninput="recalcWBS()"></td>
+              <td style="text-align:center"><input type="checkbox" checked style="accent-color:var(--danger);transform:scale(1.2)"></td>
+              <td><button class="btn btn-sm" style="background:rgba(255,59,92,0.15);color:var(--danger);border:none;cursor:pointer" onclick="this.closest('tr').remove();recalcWBS()">✕</button></td>
+            </tr>
+            <tr>
+              <td><input type="text" value="1.02" style="width:60px"></td>
+              <td><input type="text" value="Επιχώματα & Συμπύκνωση" style="min-width:180px"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px;width:90px">
+                <option value="earthwork" selected>Χωματουργικά</option>
+                <option value="concrete">Σκυρόδεμα</option>
+                <option value="asphalt">Ασφαλτικά</option>
+                <option value="network">Δίκτυα ΟΚΩ</option>
+              </select></td>
+              <td><input type="number" value="22000" oninput="recalcWBS()"></td>
+              <td><input type="text" value="m³" style="width:50px"></td>
+              <td><input type="number" value="176000" oninput="recalcWBS()"></td>
+              <td><input type="number" value="30" oninput="recalcWBS()"></td>
+              <td style="text-align:center"><input type="checkbox" checked style="accent-color:var(--danger);transform:scale(1.2)"></td>
+              <td><button class="btn btn-sm" style="background:rgba(255,59,92,0.15);color:var(--danger);border:none;cursor:pointer" onclick="this.closest('tr').remove();recalcWBS()">✕</button></td>
+            </tr>
+            <tr>
+              <td><input type="text" value="1.03" style="width:60px"></td>
+              <td><input type="text" value="Υπόβαση Οδοστρώματος" style="min-width:180px"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px;width:90px">
+                <option value="asphalt" selected>Ασφαλτικά</option>
+                <option value="earthwork">Χωματουργικά</option>
+                <option value="concrete">Σκυρόδεμα</option>
+              </select></td>
+              <td><input type="number" value="35000" oninput="recalcWBS()"></td>
+              <td><input type="text" value="m²" style="width:50px"></td>
+              <td><input type="number" value="245000" oninput="recalcWBS()"></td>
+              <td><input type="number" value="25" oninput="recalcWBS()"></td>
+              <td style="text-align:center"><input type="checkbox" checked style="accent-color:var(--danger);transform:scale(1.2)"></td>
+              <td><button class="btn btn-sm" style="background:rgba(255,59,92,0.15);color:var(--danger);border:none;cursor:pointer" onclick="this.closest('tr').remove();recalcWBS()">✕</button></td>
+            </tr>
+            <tr>
+              <td><input type="text" value="1.04" style="width:60px"></td>
+              <td><input type="text" value="Ασφαλτόστρωση" style="min-width:180px"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px;width:90px">
+                <option value="asphalt" selected>Ασφαλτικά</option>
+              </select></td>
+              <td><input type="number" value="35000" oninput="recalcWBS()"></td>
+              <td><input type="text" value="m²" style="width:50px"></td>
+              <td><input type="number" value="420000" oninput="recalcWBS()"></td>
+              <td><input type="number" value="20" oninput="recalcWBS()"></td>
+              <td style="text-align:center"><input type="checkbox" checked style="accent-color:var(--danger);transform:scale(1.2)"></td>
+              <td><button class="btn btn-sm" style="background:rgba(255,59,92,0.15);color:var(--danger);border:none;cursor:pointer" onclick="this.closest('tr').remove();recalcWBS()">✕</button></td>
+            </tr>
+            <tr>
+              <td><input type="text" value="1.05" style="width:60px"></td>
+              <td><input type="text" value="Δίκτυα ΟΚΩ" style="min-width:180px"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px;width:90px">
+                <option value="network" selected>Δίκτυα ΟΚΩ</option>
+              </select></td>
+              <td><input type="number" value="3500" oninput="recalcWBS()"></td>
+              <td><input type="text" value="ml" style="width:50px"></td>
+              <td><input type="number" value="280000" oninput="recalcWBS()"></td>
+              <td><input type="number" value="35" oninput="recalcWBS()"></td>
+              <td style="text-align:center"><input type="checkbox" style="accent-color:var(--danger);transform:scale(1.2)"></td>
+              <td><button class="btn btn-sm" style="background:rgba(255,59,92,0.15);color:var(--danger);border:none;cursor:pointer" onclick="this.closest('tr').remove();recalcWBS()">✕</button></td>
+            </tr>
+            <tr>
+              <td><input type="text" value="1.06" style="width:60px"></td>
+              <td><input type="text" value="Διαμόρφωση & Φύτευση" style="min-width:180px"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px;width:90px">
+                <option value="landscape" selected>Πράσινο</option>
+              </select></td>
+              <td><input type="number" value="8000" oninput="recalcWBS()"></td>
+              <td><input type="text" value="m²" style="width:50px"></td>
+              <td><input type="number" value="96000" oninput="recalcWBS()"></td>
+              <td><input type="number" value="15" oninput="recalcWBS()"></td>
+              <td style="text-align:center"><input type="checkbox" style="accent-color:var(--danger);transform:scale(1.2)"></td>
+              <td><button class="btn btn-sm" style="background:rgba(255,59,92,0.15);color:var(--danger);border:none;cursor:pointer" onclick="this.closest('tr').remove();recalcWBS()">✕</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-divider">
+        <div class="section-divider-line"></div>
+        <div class="section-divider-text">WBS Summary</div>
+        <div class="section-divider-line"></div>
+      </div>
+
+      <div class="grid-4">
+        <div class="kpi-card accent">
+          <div class="kpi-label">Total Activities</div>
+          <div class="kpi-value" id="wbs-count">6</div>
+          <div class="kpi-sub">Work Packages</div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-label">Critical Activities</div>
+          <div class="kpi-value" id="wbs-critical">4</div>
+          <div class="kpi-sub">Zero Float</div>
+        </div>
+        <div class="kpi-card warning">
+          <div class="kpi-label">Total Duration</div>
+          <div class="kpi-value" id="wbs-duration">—</div>
+          <div class="kpi-sub">Days (sequential max)</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">Total BAC</div>
+          <div class="kpi-value" id="wbs-budget">—</div>
+          <div class="kpi-sub">Budget at Completion</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-outline btn-sm" onclick="switchTab('charter')">← Charter</button>
+      <button class="btn btn-primary" onclick="switchTab('gantt')">Επόμενο: Gantt →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       PANEL 3: GANTT + CRITICAL PATH
+  ════════════════════════════════════════ -->
+  <div id="panel-gantt" class="panel">
+    <div class="alert-bar">
+      <span class="alert-icon">🔴</span>
+      <span id="gantt-alert-text"><strong>Critical Path:</strong> Εκσκαφές → Επιχώματα → Υπόβαση → Ασφαλτόστρωση. Μηδενικό Float. Παρακολούθηση <strong>καθημερινά</strong>.</span>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Gantt Chart — Critical Path Method (CPM)</div>
+      
+      <div class="gantt-wrapper">
+        <div class="gantt-grid" id="gantt-container">
+          <div class="gantt-row gantt-header">
+            <div>Δραστηριότητα</div>
+            <div>Έναρξη</div>
+            <div>Διάρκεια</div>
+            <div style="padding-left:8px">
+              <span style="display:inline-flex;gap:12px;font-size:8px;">
+                <span style="color:var(--accent)">■ Planned</span>
+                <span style="color:var(--accent3)">■ Actual</span>
+                <span style="color:var(--danger)">■ Critical</span>
+                <span style="color:var(--warning)">| Today</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Lookahead Schedule (3 Weeks)</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:12px;">Εβδομαδιαίος προγραμματισμός για πρόληψη καθυστερήσεων</div>
+        <table class="data-table">
+          <thead><tr><th>Εβδομάδα</th><th>Δραστηριότητα</th><th>Στόχος</th><th>Εκτίμηση</th><th>Δράση</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="pill pill-progress">W+1</span></td>
+              <td>Εκσκαφές</td>
+              <td>+8.000 m³</td>
+              <td><input type="number" value="7500" style="width:70px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px 6px;border-radius:3px"></td>
+              <td><span class="pill pill-critical">ΚΡΙΤΙΚΟ</span></td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-progress">W+2</span></td>
+              <td>Εκσκαφές</td>
+              <td>+8.000 m³</td>
+              <td><input type="number" value="8000" style="width:70px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px 6px;border-radius:3px"></td>
+              <td><span class="pill pill-progress">ON TRACK</span></td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-not-started">W+3</span></td>
+              <td>Επιχώματα</td>
+              <td>+5.000 m³</td>
+              <td><input type="number" value="5000" style="width:70px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px 6px;border-radius:3px"></td>
+              <td><span class="pill pill-not-started">PENDING</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Float Analysis</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:12px;">Total Float = Late Finish - Early Finish</div>
+        <div id="float-analysis">
+          <div style="display:flex;flex-direction:column;gap:8px;" id="float-bars"></div>
+        </div>
+        <div style="margin-top:14px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:10px;color:var(--text-dim);">
+          ⚡ <span style="color:var(--danger)">Zero Float = Κρίσιμη Εργασία</span><br>
+          Οποιαδήποτε καθυστέρηση εδώ = καθυστέρηση παράδοσης έργου
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-outline btn-sm" onclick="switchTab('wbs')">← WBS</button>
+      <button class="btn btn-primary" onclick="switchTab('evm')">Επόμενο: EVM →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       PANEL 4: EARNED VALUE MANAGEMENT
+  ════════════════════════════════════════ -->
+  <div id="panel-evm" class="panel">
+    <div class="alert-bar-warning alert-bar">
+      <span class="alert-icon">📊</span>
+      <span><strong>Βήμα 4 — EVM:</strong> Earned Value Management. Οι 3 κλειδί τιμές: PV (τι έπρεπε να γίνει), EV (τι πραγματικά έγινε), AC (τι κόστισε).</span>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title">EVM Inputs</div>
+        <div class="form-group">
+          <label class="form-label">BAC — Budget at Completion €</label>
+          <input class="form-input" id="evm-bac" type="number" value="1537000" oninput="calcEVM()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">PV — Planned Value € (τι έπρεπε)</label>
+          <input class="form-input" id="evm-pv" type="number" value="845350" oninput="calcEVM()">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:4px;">= BAC × % Planned Progress (55%)</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">EV — Earned Value € (τι έγινε)</label>
+          <input class="form-input" id="evm-ev" type="number" value="615000" oninput="calcEVM()">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:4px;">= BAC × % Actual Progress (40%)</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AC — Actual Cost € (τι κόστισε)</label>
+          <input class="form-input" id="evm-ac" type="number" value="640000" oninput="calcEVM()">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Variances</div>
+        
+        <div class="evm-formula">
+          <strong>CV</strong> = EV − AC<br>
+          <span id="ev-cv-val" style="font-size:14px;">= €0</span>
+          <div style="margin-top:4px;font-size:9px;color:var(--text-dim)">Cost Variance — θετικό = υπό προϋπολογισμό</div>
+        </div>
+        
+        <div class="evm-formula">
+          <strong>SV</strong> = EV − PV<br>
+          <span id="ev-sv-val" style="font-size:14px;">= €0</span>
+          <div style="margin-top:4px;font-size:9px;color:var(--text-dim)">Schedule Variance — θετικό = μπροστά από πρόγραμμα</div>
+        </div>
+
+        <div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-text">Indices</div><div class="section-divider-line"></div></div>
+
+        <div class="evm-formula">
+          <strong>CPI</strong> = EV ÷ AC = <span id="ev-cpi-val">0.00</span>
+          <div style="margin-top:4px;font-size:9px;color:var(--text-dim)">Cost Performance Index — > 1.0 = αποτελεσματικό</div>
+        </div>
+        
+        <div class="evm-formula">
+          <strong>SPI</strong> = EV ÷ PV = <span id="ev-spi-val">0.00</span>
+          <div style="margin-top:4px;font-size:9px;color:var(--text-dim)">Schedule Performance Index — > 1.0 = γρηγορότερα</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Forecast (EAC)</div>
+        
+        <div class="evm-formula">
+          <strong>EAC</strong> = BAC ÷ CPI<br>
+          <span id="ev-eac-val" style="font-size:14px;">= €0</span>
+          <div style="margin-top:4px;font-size:9px;color:var(--text-dim)">Estimated Cost at Completion</div>
+        </div>
+
+        <div class="evm-formula">
+          <strong>ETC</strong> = EAC − AC<br>
+          <span id="ev-etc-val" style="font-size:14px;">= €0</span>
+          <div style="margin-top:4px;font-size:9px;color:var(--text-dim)">Estimate to Complete</div>
+        </div>
+
+        <div class="evm-formula">
+          <strong>VAC</strong> = BAC − EAC<br>
+          <span id="ev-vac-val" style="font-size:14px;">= €0</span>
+          <div style="margin-top:4px;font-size:9px;color:var(--text-dim)">Variance at Completion</div>
+        </div>
+
+        <div class="evm-formula">
+          <strong>TCPI</strong> = (BAC−EV) ÷ (BAC−AC)<br>
+          <span id="ev-tcpi-val" style="font-size:14px;">= 0.00</span>
+          <div style="margin-top:4px;font-size:9px;color:var(--text-dim)">To Complete Performance Index</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S-CURVE -->
+    <div class="card">
+      <div class="card-title">S-Curve — Planned vs Actual Performance</div>
+      <div class="grid-2">
+        <div class="chart-box">
+          <canvas id="sCurveChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <canvas id="evmChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- EVM GAUGES -->
+    <div class="grid-4" style="margin-top:16px;">
+      <div class="kpi-card accent">
+        <div class="kpi-label">CPI</div>
+        <div class="kpi-value" id="kpi-cpi" style="color:var(--warning)">0.96</div>
+        <div class="kpi-sub">Cost Performance</div>
+        <div class="progress-track" style="margin-top:8px">
+          <div class="progress-fill warning" id="bar-cpi" style="width:96%"></div>
+        </div>
+      </div>
+      <div class="kpi-card warning">
+        <div class="kpi-label">SPI</div>
+        <div class="kpi-value" id="kpi-spi" style="color:var(--danger)">0.73</div>
+        <div class="kpi-sub">Schedule Performance</div>
+        <div class="progress-track" style="margin-top:8px">
+          <div class="progress-fill danger" id="bar-spi" style="width:73%"></div>
+        </div>
+      </div>
+      <div class="kpi-card danger">
+        <div class="kpi-label">% Complete</div>
+        <div class="kpi-value" id="kpi-pct">40%</div>
+        <div class="kpi-sub">Actual Progress</div>
+        <div class="progress-track" style="margin-top:8px">
+          <div class="progress-fill accent" id="bar-pct" style="width:40%"></div>
+        </div>
+      </div>
+      <div class="kpi-card success">
+        <div class="kpi-label">EAC Forecast</div>
+        <div class="kpi-value" id="kpi-eac" style="font-size:22px;color:var(--warning)">€1.6M</div>
+        <div class="kpi-sub">vs BAC €1.54M</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn btn-outline btn-sm" onclick="switchTab('gantt')">← Gantt</button>
+      <button class="btn btn-primary" onclick="switchTab('risk')">Επόμενο: Risk →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       PANEL 5: RISK REGISTER
+  ════════════════════════════════════════ -->
+  <div id="panel-risk" class="panel">
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;display:flex;">
+        <span>Risk Register & EMV Analysis</span>
+        <button class="btn btn-outline btn-sm" onclick="addRiskRow()">+ Νέος Κίνδυνος</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table" id="risk-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Περιγραφή Κινδύνου</th><th>Κατηγορία</th><th>Πιθανότητα P</th><th>Impact €</th><th>EMV = P×I €</th><th>Μέτρο Μείωσης</th><th>Κατάσταση</th>
+            </tr>
+          </thead>
+          <tbody id="risk-body">
+            <tr>
+              <td><span class="pill pill-critical">R-01</span></td>
+              <td><input type="text" value="Κακές καιρικές συνθήκες (βροχή)"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px">
+                <option>External</option><option>Technical</option><option>Financial</option><option>Organizational</option>
+              </select></td>
+              <td><input type="number" id="r1-p" value="0.7" step="0.05" min="0" max="1" oninput="calcEMV()" style="width:60px"></td>
+              <td><input type="number" id="r1-i" value="25000" oninput="calcEMV()" style="width:80px"></td>
+              <td id="r1-emv" style="color:var(--warning);font-family:var(--mono);font-weight:600">€17,500</td>
+              <td><input type="text" value="Χρονικό buffer 5 ημερών/μήνα, μεμβράνες"></td>
+              <td><span class="pill pill-progress">ACTIVE</span></td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-progress">R-02</span></td>
+              <td><input type="text" value="Καθυστέρηση Cashflow"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px">
+                <option>Financial</option><option>External</option>
+              </select></td>
+              <td><input type="number" id="r2-p" value="0.4" step="0.05" min="0" max="1" oninput="calcEMV()" style="width:60px"></td>
+              <td><input type="number" id="r2-i" value="40000" oninput="calcEMV()" style="width:80px"></td>
+              <td id="r2-emv" style="color:var(--warning);font-family:var(--mono);font-weight:600">€16,000</td>
+              <td><input type="text" value="Πίστωση τραπέζης, τιμολόγηση ΕΕ"></td>
+              <td><span class="pill pill-progress">MONITORING</span></td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-not-started">R-03</span></td>
+              <td><input type="text" value="Αύξηση τιμών ασφάλτου"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px">
+                <option>Financial</option><option>External</option>
+              </select></td>
+              <td><input type="number" id="r3-p" value="0.3" step="0.05" min="0" max="1" oninput="calcEMV()" style="width:60px"></td>
+              <td><input type="number" id="r3-i" value="32000" oninput="calcEMV()" style="width:80px"></td>
+              <td id="r3-emv" style="color:var(--warning);font-family:var(--mono);font-weight:600">€9,600</td>
+              <td><input type="text" value="Σταθερή τιμή σύμβασης προμηθευτή"></td>
+              <td><span class="pill pill-hold">CLOSED</span></td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-critical">R-04</span></td>
+              <td><input type="text" value="Αρχαιολογικά ευρήματα"></td>
+              <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px">
+                <option>External</option><option>Technical</option>
+              </select></td>
+              <td><input type="number" id="r4-p" value="0.2" step="0.05" min="0" max="1" oninput="calcEMV()" style="width:60px"></td>
+              <td><input type="number" id="r4-i" value="150000" oninput="calcEMV()" style="width:80px"></td>
+              <td id="r4-emv" style="color:var(--danger);font-family:var(--mono);font-weight:600">€30,000</td>
+              <td><input type="text" value="Αρχαιολογική αδειοδότηση πριν έναρξη"></td>
+              <td><span class="pill pill-critical">HIGH RISK</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-divider"><div class="section-divider-line"></div><div class="section-divider-text">EMV Summary</div><div class="section-divider-line"></div></div>
+      
+      <div class="grid-4">
+        <div class="kpi-card danger">
+          <div class="kpi-label">Total EMV</div>
+          <div class="kpi-value" id="total-emv" style="font-size:24px;color:var(--danger)">€73,100</div>
+          <div class="kpi-sub">Expected Monetary Value</div>
+        </div>
+        <div class="kpi-card warning">
+          <div class="kpi-label">Active Risks</div>
+          <div class="kpi-value" id="active-risks">3</div>
+          <div class="kpi-sub">Χρήζουν παρακολούθησης</div>
+        </div>
+        <div class="kpi-card accent">
+          <div class="kpi-label">Risk % of BAC</div>
+          <div class="kpi-value" id="risk-pct" style="font-size:24px;">4.8%</div>
+          <div class="kpi-sub">vs Budget</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">Risk Score</div>
+          <div class="kpi-value" id="risk-score" style="color:var(--warning)">MED</div>
+          <div class="kpi-sub">Overall Assessment</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HEATMAP -->
+    <div class="card">
+      <div class="card-title">Risk Probability-Impact Heatmap</div>
+      <div style="display:flex;gap:20px;align-items:flex-start;">
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:8px;writing-mode:vertical-lr;transform:rotate(180deg);height:200px;display:flex;align-items:center;">PROBABILITY ↑</div>
+        </div>
+        <div style="flex:1">
+          <div style="display:grid;grid-template-columns:60px repeat(5,1fr);gap:3px;font-family:var(--mono);font-size:9px;color:var(--text-dim);text-align:center;margin-bottom:3px">
+            <div></div><div>Very Low</div><div>Low</div><div>Medium</div><div>High</div><div>Very High</div>
+          </div>
+          <div style="display:grid;grid-template-columns:60px repeat(5,1fr);gap:3px;">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:flex;flex-direction:column;justify-content:space-between;text-align:right;padding-right:4px">
+              <span>0.9</span><span>0.7</span><span>0.5</span><span>0.3</span><span>0.1</span>
+            </div>
+            <div class="risk-cell risk-med">R-01</div>
+            <div class="risk-cell risk-low"></div>
+            <div class="risk-cell risk-med"></div>
+            <div class="risk-cell risk-high"></div>
+            <div class="risk-cell risk-extreme"></div>
+            
+            <div></div>
+            <div class="risk-cell risk-low"></div>
+            <div class="risk-cell risk-low"></div>
+            <div class="risk-cell risk-med">R-02</div>
+            <div class="risk-cell risk-high"></div>
+            <div class="risk-cell risk-extreme"></div>
+            
+            <div></div>
+            <div class="risk-cell risk-low"></div>
+            <div class="risk-cell risk-low"></div>
+            <div class="risk-cell risk-med">R-03</div>
+            <div class="risk-cell risk-med"></div>
+            <div class="risk-cell risk-high"></div>
+            
+            <div></div>
+            <div class="risk-cell risk-low"></div>
+            <div class="risk-cell risk-low"></div>
+            <div class="risk-cell risk-low"></div>
+            <div class="risk-cell risk-med"></div>
+            <div class="risk-cell risk-high">R-04</div>
+            
+            <div></div>
+            <div class="risk-cell risk-low"></div>
+            <div class="risk-cell risk-low"></div>
+            <div class="risk-cell risk-low"></div>
+            <div class="risk-cell risk-low"></div>
+            <div class="risk-cell risk-med"></div>
+          </div>
+          <div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:4px;">IMPACT →</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:9px;">
+          <div style="display:flex;align-items:center;gap:6px;"><div style="width:14px;height:14px;border-radius:2px;background:rgba(43,255,136,0.12);border:1px solid rgba(43,255,136,0.3)"></div>Low</div>
+          <div style="display:flex;align-items:center;gap:6px;"><div style="width:14px;height:14px;border-radius:2px;background:rgba(255,184,48,0.15);border:1px solid rgba(255,184,48,0.3)"></div>Medium</div>
+          <div style="display:flex;align-items:center;gap:6px;"><div style="width:14px;height:14px;border-radius:2px;background:rgba(255,59,92,0.2);border:1px solid rgba(255,59,92,0.3)"></div>High</div>
+          <div style="display:flex;align-items:center;gap:6px;"><div style="width:14px;height:14px;border-radius:2px;background:rgba(139,0,0,0.4);border:1px solid rgba(255,59,92,0.3)"></div>Extreme</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-outline btn-sm" onclick="switchTab('evm')">← EVM</button>
+      <button class="btn btn-primary" onclick="switchTab('dashboard')">Επόμενο: Dashboard →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════
+       PANEL 6: EXECUTIVE DASHBOARD
+  ════════════════════════════════════════ -->
+  <div id="panel-dashboard" class="panel">
+    <!-- SUMMARY BAR -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+      <div>
+        <div style="font-family:var(--display);font-size:22px;font-weight:800;letter-spacing:1px;" id="dash-project-name">— Project Name —</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:4px;">Executive Status Report · Planning Engineer View</div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <span id="dash-health-badge" class="badge badge-at-risk">⚡ AT RISK</span>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">
+          <div>BAC: <span id="dash-bac" style="color:var(--text)">€1,537,000</span></div>
+          <div>EAC: <span id="dash-eac" style="color:var(--warning)">€1,601,042</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 KPI CARDS -->
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px;">
+      <div class="kpi-card accent">
+        <div class="kpi-label">% Complete</div>
+        <div class="kpi-value" id="d-progress" style="color:var(--accent)">40%</div>
+        <div class="kpi-sub">Actual / 55% Planned</div>
+      </div>
+      <div class="kpi-card warning">
+        <div class="kpi-label">SPI</div>
+        <div class="kpi-value" id="d-spi" style="color:var(--warning)">0.73</div>
+        <div class="kpi-sub">Target ≥ 1.0</div>
+      </div>
+      <div class="kpi-card warning">
+        <div class="kpi-label">CPI</div>
+        <div class="kpi-value" id="d-cpi" style="color:var(--warning)">0.96</div>
+        <div class="kpi-sub">Target ≥ 1.0</div>
+      </div>
+      <div class="kpi-card danger">
+        <div class="kpi-label">Critical Float</div>
+        <div class="kpi-value" style="color:var(--danger)">0d</div>
+        <div class="kpi-sub">Critical Path</div>
+      </div>
+      <div class="kpi-card danger">
+        <div class="kpi-label">Risk EMV</div>
+        <div class="kpi-value" id="d-emv" style="font-size:20px;color:var(--danger)">€73K</div>
+        <div class="kpi-sub">4.8% of BAC</div>
+      </div>
+      <div class="kpi-card success">
+        <div class="kpi-label">WBS Tasks</div>
+        <div class="kpi-value" id="d-tasks">6</div>
+        <div class="kpi-sub">4 Critical</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">S-Curve: Planned vs Earned vs Actual Cost</div>
+        <div style="height:240px;"><canvas id="dashSCurve"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">CPI / SPI Trend</div>
+        <div style="height:240px;"><canvas id="dashTrend"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Critical Path Status</div>
+        <table class="data-table">
+          <thead><tr><th>WBS</th><th>Εργασία</th><th>Float</th><th>Πρόοδος</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="pill pill-critical">1.01</span></td>
+              <td>Εκσκαφές (40k m³)</td>
+              <td><span style="font-family:var(--mono);color:var(--danger);font-weight:600">0 days</span></td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div class="progress-track" style="width:80px;margin:0"><div class="progress-fill warning" style="width:45%"></div></div>
+                  <span style="font-family:var(--mono);font-size:10px">45%</span>
+                </div>
+              </td>
+              <td><span class="pill pill-progress">IN PROGRESS</span></td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-critical">1.02</span></td>
+              <td>Επιχώματα (22k m³)</td>
+              <td><span style="font-family:var(--mono);color:var(--danger);font-weight:600">0 days</span></td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div class="progress-track" style="width:80px;margin:0"><div class="progress-fill danger" style="width:0%"></div></div>
+                  <span style="font-family:var(--mono);font-size:10px">0%</span>
+                </div>
+              </td>
+              <td><span class="pill pill-not-started">NOT STARTED</span></td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-critical">1.03</span></td>
+              <td>Υπόβαση (35k m²)</td>
+              <td><span style="font-family:var(--mono);color:var(--danger);font-weight:600">0 days</span></td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div class="progress-track" style="width:80px;margin:0"><div class="progress-fill danger" style="width:0%"></div></div>
+                  <span style="font-family:var(--mono);font-size:10px">0%</span>
+                </div>
+              </td>
+              <td><span class="pill pill-not-started">NOT STARTED</span></td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-critical">1.04</span></td>
+              <td>Ασφαλτόστρωση (35k m²)</td>
+              <td><span style="font-family:var(--mono);color:var(--danger);font-weight:600">0 days</span></td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div class="progress-track" style="width:80px;margin:0"><div class="progress-fill danger" style="width:0%"></div></div>
+                  <span style="font-family:var(--mono);font-size:10px">0%</span>
+                </div>
+              </td>
+              <td><span class="pill pill-not-started">NOT STARTED</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Planning Engineer Notes</div>
+        <div id="pe-notes" style="font-size:12px;line-height:1.7;">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="padding:8px;background:rgba(255,59,92,0.06);border-left:2px solid var(--danger);border-radius:3px;">
+              <span style="font-family:var(--mono);font-size:9px;color:var(--danger)">CRITICAL</span><br>
+              Critical path monitoring <strong>daily</strong>. Zero float στις 4 κύριες εργασίες.
+            </div>
+            <div style="padding:8px;background:rgba(255,184,48,0.06);border-left:2px solid var(--warning);border-radius:3px;">
+              <span style="font-family:var(--mono);font-size:9px;color:var(--warning)">WARNING</span><br>
+              SPI = 0.73 → Το έργο <strong>27% πίσω από πρόγραμμα</strong>. Απαιτείται acceleration plan.
+            </div>
+            <div style="padding:8px;background:rgba(0,201,255,0.05);border-left:2px solid var(--accent);border-radius:3px;">
+              <span style="font-family:var(--mono);font-size:9px;color:var(--accent)">ACTION</span><br>
+              Εξέταση νυκτερινής βάρδιας για εκσκαφές. Αναθεώρηση Baseline Month 3.
+            </div>
+            <div style="padding:8px;background:rgba(43,255,136,0.05);border-left:2px solid var(--accent3);border-radius:3px;">
+              <span style="font-family:var(--mono);font-size:9px;color:var(--accent3)">NOTE</span><br>
+              CPI = 0.96 → Κοντά στο target. Εκσκαφές αποδοτικές σε κόστος.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:16px;">
+      <button class="btn btn-primary" onclick="window.print()">🖨️ PRINT / EXPORT PDF</button>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+// ══════════════════════════════════
+// TAB NAVIGATION
+// ══════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  
+  document.getElementById('panel-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  
+  // Update sidebar
+  const navMap = { charter: 0, wbs: 1, gantt: 2, evm: 3, risk: 4, dashboard: 5 };
+  document.querySelectorAll('.nav-btn')[navMap[name]].classList.add('active');
+  
+  if (name === 'gantt') buildGantt();
+  if (name === 'evm') { initSCurve(); calcEVM(); }
+  if (name === 'dashboard') initDashboard();
+}
+
+// ══════════════════════════════════
+// HEADER UPDATE
+// ══════════════════════════════════
+function updateHeader() {
+  const t = document.getElementById('c-title').value;
+  document.getElementById('header-project').textContent = t || '— No Project Loaded —';
+  document.getElementById('dash-project-name').textContent = t || '— Project Name —';
+}
+
+// ══════════════════════════════════
+// WBS RECALC
+// ══════════════════════════════════
+function recalcWBS() {
+  const rows = document.querySelectorAll('#wbs-body tr');
+  let totalBudget = 0, totalDur = 0, critCount = 0;
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input[type="number"]');
+    if (inputs.length >= 2) {
+      totalBudget += parseFloat(inputs[1].value) || 0;
+      totalDur += parseFloat(inputs[2] ? inputs[2].value : 0) || 0;
+    }
+    if (row.querySelector('input[type="checkbox"]') && row.querySelector('input[type="checkbox"]').checked) critCount++;
+  });
+  
+  const count = rows.length;
+  document.getElementById('wbs-count').textContent = count;
+  document.getElementById('wbs-critical').textContent = critCount;
+  document.getElementById('wbs-duration').textContent = totalDur + 'd';
+  document.getElementById('wbs-budget').textContent = '€' + (totalBudget/1000).toFixed(0) + 'K';
+}
+
+function addWBSRow() {
+  const tbody = document.getElementById('wbs-body');
+  const count = tbody.rows.length + 1;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" value="1.0${count}" style="width:60px"></td>
+    <td><input type="text" placeholder="Νέα Εργασία" style="min-width:180px"></td>
+    <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px;width:90px">
+      <option value="earthwork">Χωματουργικά</option><option value="concrete">Σκυρόδεμα</option>
+      <option value="asphalt">Ασφαλτικά</option><option value="network">Δίκτυα ΟΚΩ</option>
+      <option value="landscape">Πράσινο</option><option value="other">Άλλο</option>
+    </select></td>
+    <td><input type="number" value="0" oninput="recalcWBS()"></td>
+    <td><input type="text" value="m²" style="width:50px"></td>
+    <td><input type="number" value="0" oninput="recalcWBS()"></td>
+    <td><input type="number" value="0" oninput="recalcWBS()"></td>
+    <td style="text-align:center"><input type="checkbox" style="accent-color:var(--danger);transform:scale(1.2)"></td>
+    <td><button class="btn btn-sm" style="background:rgba(255,59,92,0.15);color:var(--danger);border:none;cursor:pointer" onclick="this.closest('tr').remove();recalcWBS()">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+// ══════════════════════════════════
+// GANTT BUILDER
+// ══════════════════════════════════
+const ganttData = [
+  { id:'1.01', name:'Γενικές Εκσκαφές',     start:0,  dur:45, actual:18, critical:true  },
+  { id:'1.02', name:'Επιχώματα',             start:30, dur:30, actual:0,  critical:true  },
+  { id:'1.03', name:'Υπόβαση Οδοστρώματος', start:55, dur:25, actual:0,  critical:true  },
+  { id:'1.04', name:'Ασφαλτόστρωση',         start:75, dur:20, actual:0,  critical:true  },
+  { id:'1.05', name:'Δίκτυα ΟΚΩ',           start:20, dur:35, actual:0,  critical:false },
+  { id:'1.06', name:'Φύτευση & Διαμόρφωση', start:90, dur:15, actual:0,  critical:false },
+];
+const totalDays = 120;
+const todayDay = 45;
+
+function buildGantt() {
+  const container = document.getElementById('gantt-container');
+  // Keep header
+  while (container.children.length > 1) container.removeChild(container.lastChild);
+  
+  const floatBars = document.getElementById('float-bars');
+  floatBars.innerHTML = '';
+  
+  ganttData.forEach(t => {
+    const pct_start = (t.start / totalDays * 100).toFixed(1);
+    const pct_width = (t.dur / totalDays * 100).toFixed(1);
+    const actual_width = (Math.min(t.actual, t.dur) / totalDays * 100).toFixed(1);
+    const today_pct = (todayDay / totalDays * 100).toFixed(1);
+    const float_days = t.critical ? 0 : 12;
+    
+    const row = document.createElement('div');
+    row.className = 'gantt-row';
+    row.innerHTML = `
+      <div style="font-size:11px;font-family:var(--body);color:${t.critical ? '#ff8080' : 'var(--text)'};font-weight:${t.critical?'600':'400'}">
+        <span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-right:4px">${t.id}</span>${t.name}
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim)">D+${t.start}</div>
+      <div style="font-family:var(--mono);font-size:9px;color:${t.critical?'var(--danger)':'var(--text-dim)'}">${t.dur}d</div>
+      <div class="gantt-bar-container">
+        <div class="gantt-today" style="left:${today_pct}%"></div>
+        <div class="gantt-bar ${t.critical ? 'critical' : 'normal'}" style="left:${pct_start}%;width:${pct_width}%;opacity:0.4"></div>
+        ${t.actual > 0 ? `<div class="gantt-actual-bar" style="left:${pct_start}%;width:${actual_width}%"></div>` : ''}
+      </div>
+    `;
+    container.appendChild(row);
+    
+    // Float bars
+    const fb = document.createElement('div');
+    fb.style.cssText = 'margin-bottom:6px';
+    fb.innerHTML = `
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+        <span style="font-size:11px;font-family:var(--mono);color:${t.critical?'var(--danger)':'var(--text)'}">${t.id} ${t.name}</span>
+        <span style="font-family:var(--mono);font-size:10px;color:${t.critical?'var(--danger)':'var(--accent3)'}">
+          ${float_days === 0 ? '⚡ 0 days' : `+${float_days} days`}
+        </span>
+      </div>
+      <div class="progress-track"><div class="progress-fill ${t.critical ? 'danger' : 'success'}" style="width:${t.critical?'100':'30'}%"></div></div>
+    `;
+    floatBars.appendChild(fb);
+  });
+}
+
+// ══════════════════════════════════
+// EVM CALCULATIONS
+// ══════════════════════════════════
+let sCurveChart, evmChart, dashSCurve, dashTrend;
+
+function calcEVM() {
+  const bac = parseFloat(document.getElementById('evm-bac').value) || 0;
+  const pv  = parseFloat(document.getElementById('evm-pv').value) || 0;
+  const ev  = parseFloat(document.getElementById('evm-ev').value) || 0;
+  const ac  = parseFloat(document.getElementById('evm-ac').value) || 0;
+
+  const cv  = ev - ac;
+  const sv  = ev - pv;
+  const cpi = ac > 0 ? ev / ac : 0;
+  const spi = pv > 0 ? ev / pv : 0;
+  const eac = cpi > 0 ? bac / cpi : 0;
+  const etc = eac - ac;
+  const vac = bac - eac;
+  const tcpi = (bac - ac) > 0 ? (bac - ev) / (bac - ac) : 0;
+  const pct_complete = bac > 0 ? (ev / bac * 100).toFixed(1) : 0;
+
+  const colorVal = (v, inv=false) => {
+    if (inv) return v > 0 ? 'var(--danger)' : 'var(--accent3)';
+    return v >= 0 ? 'var(--accent3)' : 'var(--danger)';
+  };
+  const colorIdx = v => v >= 1 ? 'var(--accent3)' : v >= 0.9 ? 'var(--warning)' : 'var(--danger)';
+  const fmt = v => (v >= 0 ? '+' : '') + '€' + Math.abs(v).toLocaleString('el-GR');
+
+  document.getElementById('ev-cv-val').innerHTML = `<span style="color:${colorVal(cv)}">${fmt(cv)}</span>`;
+  document.getElementById('ev-sv-val').innerHTML = `<span style="color:${colorVal(sv)}">${fmt(sv)}</span>`;
+  document.getElementById('ev-cpi-val').innerHTML = `<span style="color:${colorIdx(cpi)}">${cpi.toFixed(3)}</span>`;
+  document.getElementById('ev-spi-val').innerHTML = `<span style="color:${colorIdx(spi)}">${spi.toFixed(3)}</span>`;
+  document.getElementById('ev-eac-val').innerHTML = `<span style="color:${colorVal(vac)}">€${Math.round(eac).toLocaleString('el-GR')}</span>`;
+  document.getElementById('ev-etc-val').innerHTML = `<span style="color:var(--text)">€${Math.round(etc).toLocaleString('el-GR')}</span>`;
+  document.getElementById('ev-vac-val').innerHTML = `<span style="color:${colorVal(vac)}">€${Math.round(vac).toLocaleString('el-GR')}</span>`;
+  document.getElementById('ev-tcpi-val').innerHTML = `<span style="color:${colorIdx(tcpi)}">${tcpi.toFixed(3)}</span>`;
+
+  // KPI Cards
+  const cpiC = colorIdx(cpi), spiC = colorIdx(spi);
+  document.getElementById('kpi-cpi').style.color = cpiC;
+  document.getElementById('kpi-cpi').textContent = cpi.toFixed(2);
+  document.getElementById('kpi-spi').style.color = spiC;
+  document.getElementById('kpi-spi').textContent = spi.toFixed(2);
+  document.getElementById('kpi-pct').textContent = pct_complete + '%';
+  document.getElementById('kpi-eac').textContent = '€' + (eac/1000000).toFixed(2) + 'M';
+  document.getElementById('bar-cpi').style.width = Math.min(cpi*100, 150) + '%';
+  document.getElementById('bar-spi').style.width = Math.min(spi*100, 150) + '%';
+  document.getElementById('bar-pct').style.width = pct_complete + '%';
+
+  // Update dashboard
+  document.getElementById('d-spi').textContent = spi.toFixed(2);
+  document.getElementById('d-spi').style.color = spiC;
+  document.getElementById('d-cpi').textContent = cpi.toFixed(2);
+  document.getElementById('d-cpi').style.color = cpiC;
+  document.getElementById('d-progress').textContent = pct_complete + '%';
+  document.getElementById('dash-eac').textContent = '€' + Math.round(eac).toLocaleString('el-GR');
+
+  if (sCurveChart) {
+    sCurveChart.data.datasets[2].data = [0, null, ev/1000, null, null];
+    sCurveChart.data.datasets[1].data = [0, null, ac/1000, null, null];
+    sCurveChart.update();
+  }
+}
+
+function initSCurve() {
+  if (sCurveChart) { sCurveChart.destroy(); sCurveChart = null; }
+  if (evmChart) { evmChart.destroy(); evmChart = null; }
+
+  const bac = parseFloat(document.getElementById('evm-bac').value) || 1537000;
+  
+  const ctx1 = document.getElementById('sCurveChart').getContext('2d');
+  sCurveChart = new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels: ['Start', 'Month 1', 'Month 2', 'Month 3', 'Month 4'],
+      datasets: [
+        { label: 'PV (Planned)', data: [0, 25, 55, 85, 100].map(v=>v*bac/100/1000), borderColor:'#2e5c9a', borderWidth:2, fill:false, tension:0.4, pointRadius:4, pointBackgroundColor:'#2e5c9a' },
+        { label: 'AC (Actual Cost)', data: [0, 280, null, null, null], borderColor:'#ff6b2b', borderWidth:2, fill:false, tension:0.4, pointRadius:4, borderDash:[4,4], pointBackgroundColor:'#ff6b2b' },
+        { label: 'EV (Earned Value)', data: [0, 200, null, null, null], borderColor:'#00b050', borderWidth:3, fill:false, tension:0.4, pointRadius:5, pointBackgroundColor:'#00b050' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color:'#6b7280', font:{ family:'IBM Plex Mono', size:10 } } } },
+      scales: {
+        x: { ticks:{ color:'#6b7280', font:{size:10} }, grid:{ color:'rgba(208,215,222,0.5)' } },
+        y: { ticks:{ color:'#6b7280', font:{size:10}, callback: v => '€' + v.toFixed(0) + 'K' }, grid:{ color:'rgba(208,215,222,0.5)' } }
+      }
+    }
+  });
+
+  const ctx2 = document.getElementById('evmChart').getContext('2d');
+  evmChart = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: ['PV', 'EV', 'AC', 'EAC (forecast)'],
+      datasets: [{
+        label: 'Value €K',
+        data: [845, 615, 640, 1601],
+        backgroundColor: ['rgba(46,92,154,0.7)','rgba(0,176,80,0.7)','rgba(255,107,43,0.7)','rgba(192,0,0,0.7)'],
+        borderColor: ['#2e5c9a','#00b050','#ff6b2b','#c00000'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks:{ color:'#6b7280', font:{size:11, family:'IBM Plex Mono'} }, grid:{ display:false } },
+        y: { ticks:{ color:'#6b7280', font:{size:10}, callback: v => '€' + v + 'K' }, grid:{ color:'rgba(208,215,222,0.4)' } }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════
+// RISK EMV
+// ══════════════════════════════════
+function calcEMV() {
+  let total = 0;
+  const risks = ['r1','r2','r3','r4'];
+  risks.forEach((r,i) => {
+    const p = parseFloat(document.getElementById(r+'-p')?.value) || 0;
+    const imp = parseFloat(document.getElementById(r+'-i')?.value) || 0;
+    const emv = p * imp;
+    total += emv;
+    const el = document.getElementById(r+'-emv');
+    if (el) el.textContent = '€' + emv.toLocaleString('el-GR');
+  });
+  document.getElementById('total-emv').textContent = '€' + total.toLocaleString('el-GR');
+  document.getElementById('d-emv').textContent = '€' + (total/1000).toFixed(0) + 'K';
+  
+  const bac = parseFloat(document.getElementById('evm-bac').value) || 1537000;
+  const riskPct = (total / bac * 100).toFixed(1);
+  document.getElementById('risk-pct').textContent = riskPct + '%';
+  document.getElementById('risk-score').textContent = total > 60000 ? 'HIGH' : total > 30000 ? 'MED' : 'LOW';
+  document.getElementById('risk-score').style.color = total > 60000 ? 'var(--danger)' : total > 30000 ? 'var(--warning)' : 'var(--accent3)';
+}
+
+function addRiskRow() {
+  const tbody = document.getElementById('risk-body');
+  const count = tbody.rows.length + 1;
+  const rid = 'rn' + count;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><span class="pill pill-not-started">R-0${count+4}</span></td>
+    <td><input type="text" placeholder="Περιγραφή Κινδύνου"></td>
+    <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px">
+      <option>External</option><option>Technical</option><option>Financial</option>
+    </select></td>
+    <td><input type="number" id="${rid}-p" value="0.3" step="0.05" min="0" max="1" oninput="calcEMV()" style="width:60px"></td>
+    <td><input type="number" id="${rid}-i" value="10000" oninput="calcEMV()" style="width:80px"></td>
+    <td id="${rid}-emv" style="color:var(--warning);font-family:var(--mono);font-weight:600">€3,000</td>
+    <td><input type="text" placeholder="Μέτρο Μείωσης"></td>
+    <td><span class="pill pill-progress">MONITORING</span></td>
+  `;
+  tbody.appendChild(tr);
+  calcEMV();
+}
+
+// ══════════════════════════════════
+// DASHBOARD CHARTS
+// ══════════════════════════════════
+function initDashboard() {
+  if (dashSCurve) { dashSCurve.destroy(); dashSCurve = null; }
+  if (dashTrend) { dashTrend.destroy(); dashTrend = null; }
+
+  const ctx3 = document.getElementById('dashSCurve').getContext('2d');
+  dashSCurve = new Chart(ctx3, {
+    type: 'line',
+    data: {
+      labels: ['Start', 'Month 1', 'Month 2', 'Month 3', 'Month 4'],
+      datasets: [
+        { label: 'Planned Value', data: [0, 385, 845, 1305, 1537], borderColor:'#2e5c9a', borderWidth:2, fill:true, backgroundColor:'rgba(46,92,154,0.08)', tension:0.4 },
+        { label: 'Earned Value', data: [0, 200, 615, null, null], borderColor:'#00b050', borderWidth:3, fill:false, tension:0.4, pointRadius:5 },
+        { label: 'Actual Cost', data: [0, 280, 640, null, null], borderColor:'#ff6b2b', borderWidth:2, fill:false, tension:0.4, borderDash:[5,3] },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color:'#6b7280', font:{family:'IBM Plex Mono', size:9} } } },
+      scales: {
+        x: { ticks:{ color:'#6b7280', font:{size:9} }, grid:{ color:'rgba(208,215,222,0.4)' } },
+        y: { ticks:{ color:'#6b7280', font:{size:9}, callback: v => '€' + (v/1000).toFixed(0) + 'K' }, grid:{ color:'rgba(208,215,222,0.4)' } }
+      }
+    }
+  });
+
+  const ctx4 = document.getElementById('dashTrend').getContext('2d');
+  dashTrend = new Chart(ctx4, {
+    type: 'line',
+    data: {
+      labels: ['Start', 'Month 1', 'Month 2'],
+      datasets: [
+        { label: 'CPI', data: [1.0, 0.98, 0.96], borderColor:'#2e5c9a', borderWidth:2, fill:false, tension:0.2, pointRadius:5, pointBackgroundColor:'#2e5c9a' },
+        { label: 'SPI', data: [1.0, 0.81, 0.73], borderColor:'#ff6b2b', borderWidth:2, fill:false, tension:0.2, pointRadius:5, pointBackgroundColor:'#ff6b2b' },
+        { label: 'Target (1.0)', data: [1.0, 1.0, 1.0], borderColor:'rgba(0,176,80,0.4)', borderWidth:1, fill:false, borderDash:[3,3] },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color:'#6b7280', font:{family:'IBM Plex Mono', size:9} } } },
+      scales: {
+        x: { ticks:{ color:'#6b7280', font:{size:9} }, grid:{ color:'rgba(208,215,222,0.4)' } },
+        y: { min:0.5, max:1.2, ticks:{ color:'#6b7280', font:{size:9} }, grid:{ color:'rgba(208,215,222,0.4)' } }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════
+// INIT
+// ══════════════════════════════════
+window.onload = function() {
+  recalcWBS();
+  calcEMV();
+  initGlossary();
+  checkAutoLoad();
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SAVE / LOAD PROJECT DATA
+// ═══════════════════════════════════════════════════════════════
+function saveProjectData() {
+  const data = {
+    version: '1.0',
+    timestamp: new Date().toISOString(),
+    
+    // CHARTER
+    charter: {
+      title: document.getElementById('c-title')?.value || '',
+      pm: document.getElementById('c-pm')?.value || '',
+      pe: document.getElementById('c-pe')?.value || '',
+      start: document.getElementById('c-start')?.value || '',
+      end: document.getElementById('c-end')?.value || '',
+      type: document.getElementById('c-type')?.value || '',
+      objectives: document.getElementById('c-objectives')?.value || '',
+      inscope: document.getElementById('c-inscope')?.value || '',
+      outscope: document.getElementById('c-outscope')?.value || '',
+      bac: document.getElementById('c-bac')?.value || '',
+      reserve: document.getElementById('c-reserve')?.value || '',
+      duration: document.getElementById('c-duration')?.value || '',
+      method: document.getElementById('c-method')?.value || '',
+      assumptions: document.getElementById('c-assumptions')?.value || '',
+      approved: document.getElementById('charter-approved')?.checked || false
+    },
+    
+    // WBS
+    wbs: [],
+    
+    // EVM
+    evm: {
+      bac: document.getElementById('evm-bac')?.value || '',
+      pv: document.getElementById('evm-pv')?.value || '',
+      ev: document.getElementById('evm-ev')?.value || '',
+      ac: document.getElementById('evm-ac')?.value || ''
+    },
+    
+    // RISKS
+    risks: []
+  };
+  
+  // Save WBS rows
+  const wbsRows = document.querySelectorAll('#wbs-body tr');
+  wbsRows.forEach(row => {
+    const inputs = row.querySelectorAll('input, select');
+    if (inputs.length >= 7) {
+      data.wbs.push({
+        id: inputs[0].value,
+        desc: inputs[1].value,
+        category: inputs[2].value,
+        qty: inputs[3].value,
+        unit: inputs[4].value,
+        budget: inputs[5].value,
+        duration: inputs[6].value,
+        critical: inputs[7]?.checked || false
+      });
+    }
+  });
+  
+  // Save Risk rows
+  const riskRows = document.querySelectorAll('#risk-body tr');
+  riskRows.forEach((row, idx) => {
+    const inputs = row.querySelectorAll('input, select');
+    if (inputs.length >= 4) {
+      data.risks.push({
+        id: 'r' + (idx + 1),
+        desc: inputs[0]?.value || '',
+        category: inputs[1]?.value || '',
+        prob: inputs[2]?.value || '',
+        impact: inputs[3]?.value || '',
+        mitigation: inputs[4]?.value || ''
+      });
+    }
+  });
+  
+  // Download as JSON
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `PCM_${data.charter.title || 'Project'}_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  // Also save to localStorage for auto-recovery
+  localStorage.setItem('pcm_last_save', JSON.stringify(data));
+  
+  alert('✅ Τα δεδομένα αποθηκεύτηκαν επιτυχώς!\n\nΛήψη αρχείου: ' + a.download + '\n\nΕπίσης αποθηκεύτηκαν αυτόματα στον browser για auto-recovery.');
+}
+
+function loadProjectData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const data = JSON.parse(evt.target.result);
+        applyProjectData(data);
+        alert('✅ Τα δεδομένα φορτώθηκαν επιτυχώς!\n\nProject: ' + data.charter.title);
+      } catch (err) {
+        alert('❌ Σφάλμα κατά τη φόρτωση: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function applyProjectData(data) {
+  if (!data || !data.charter) return;
+  
+  // Restore CHARTER
+  const c = data.charter;
+  if (document.getElementById('c-title')) document.getElementById('c-title').value = c.title || '';
+  if (document.getElementById('c-pm')) document.getElementById('c-pm').value = c.pm || '';
+  if (document.getElementById('c-pe')) document.getElementById('c-pe').value = c.pe || '';
+  if (document.getElementById('c-start')) document.getElementById('c-start').value = c.start || '';
+  if (document.getElementById('c-end')) document.getElementById('c-end').value = c.end || '';
+  if (document.getElementById('c-type')) document.getElementById('c-type').value = c.type || '';
+  if (document.getElementById('c-objectives')) document.getElementById('c-objectives').value = c.objectives || '';
+  if (document.getElementById('c-inscope')) document.getElementById('c-inscope').value = c.inscope || '';
+  if (document.getElementById('c-outscope')) document.getElementById('c-outscope').value = c.outscope || '';
+  if (document.getElementById('c-bac')) document.getElementById('c-bac').value = c.bac || '';
+  if (document.getElementById('c-reserve')) document.getElementById('c-reserve').value = c.reserve || '';
+  if (document.getElementById('c-duration')) document.getElementById('c-duration').value = c.duration || '';
+  if (document.getElementById('c-method')) document.getElementById('c-method').value = c.method || '';
+  if (document.getElementById('c-assumptions')) document.getElementById('c-assumptions').value = c.assumptions || '';
+  if (document.getElementById('charter-approved')) document.getElementById('charter-approved').checked = c.approved || false;
+  
+  // Restore WBS
+  if (data.wbs && data.wbs.length > 0) {
+    const tbody = document.getElementById('wbs-body');
+    if (tbody) {
+      tbody.innerHTML = '';
+      data.wbs.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input type="text" value="${item.id || ''}" style="width:60px"></td>
+          <td><input type="text" value="${item.desc || ''}" style="min-width:180px"></td>
+          <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px;width:90px">
+            <option value="earthwork" ${item.category === 'earthwork' ? 'selected' : ''}>Χωματουργικά</option>
+            <option value="concrete" ${item.category === 'concrete' ? 'selected' : ''}>Σκυρόδεμα</option>
+            <option value="asphalt" ${item.category === 'asphalt' ? 'selected' : ''}>Ασφαλτικά</option>
+            <option value="network" ${item.category === 'network' ? 'selected' : ''}>Δίκτυα ΟΚΩ</option>
+            <option value="landscape" ${item.category === 'landscape' ? 'selected' : ''}>Πράσινο</option>
+            <option value="other" ${item.category === 'other' ? 'selected' : ''}>Άλλο</option>
+          </select></td>
+          <td><input type="number" value="${item.qty || 0}" oninput="recalcWBS()"></td>
+          <td><input type="text" value="${item.unit || ''}" style="width:50px"></td>
+          <td><input type="number" value="${item.budget || 0}" oninput="recalcWBS()"></td>
+          <td><input type="number" value="${item.duration || 0}" oninput="recalcWBS()"></td>
+          <td style="text-align:center"><input type="checkbox" ${item.critical ? 'checked' : ''} style="accent-color:var(--danger);transform:scale(1.2)"></td>
+          <td><button class="btn btn-sm" style="background:rgba(255,59,92,0.15);color:var(--danger);border:none;cursor:pointer" onclick="this.closest('tr').remove();recalcWBS()">✕</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      recalcWBS();
+    }
+  }
+  
+  // Restore EVM
+  if (data.evm) {
+    if (document.getElementById('evm-bac')) document.getElementById('evm-bac').value = data.evm.bac || '';
+    if (document.getElementById('evm-pv')) document.getElementById('evm-pv').value = data.evm.pv || '';
+    if (document.getElementById('evm-ev')) document.getElementById('evm-ev').value = data.evm.ev || '';
+    if (document.getElementById('evm-ac')) document.getElementById('evm-ac').value = data.evm.ac || '';
+    calcEVM();
+  }
+  
+  // Restore RISKS
+  if (data.risks && data.risks.length > 0) {
+    const tbody = document.getElementById('risk-body');
+    if (tbody) {
+      tbody.innerHTML = '';
+      data.risks.forEach((risk, idx) => {
+        const rid = risk.id || ('r' + (idx + 1));
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="pill pill-critical">R-${String(idx + 1).padStart(2, '0')}</span></td>
+          <td><input type="text" value="${risk.desc || ''}"></td>
+          <td><select style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px;border-radius:3px">
+            <option ${risk.category === 'External' ? 'selected' : ''}>External</option>
+            <option ${risk.category === 'Technical' ? 'selected' : ''}>Technical</option>
+            <option ${risk.category === 'Financial' ? 'selected' : ''}>Financial</option>
+            <option ${risk.category === 'Organizational' ? 'selected' : ''}>Organizational</option>
+          </select></td>
+          <td><input type="number" id="${rid}-p" value="${risk.prob || 0.5}" step="0.05" min="0" max="1" oninput="calcEMV()" style="width:60px"></td>
+          <td><input type="number" id="${rid}-i" value="${risk.impact || 0}" oninput="calcEMV()" style="width:80px"></td>
+          <td id="${rid}-emv" style="color:var(--warning);font-family:var(--mono);font-weight:600">€0</td>
+          <td><input type="text" value="${risk.mitigation || ''}"></td>
+          <td><span class="pill pill-progress">ACTIVE</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      calcEMV();
+    }
+  }
+  
+  updateHeader();
+}
+
+function checkAutoLoad() {
+  const saved = localStorage.getItem('pcm_last_save');
+  if (saved) {
+    const shouldRestore = confirm('🔄 Βρέθηκε προηγούμενη αποθήκευση.\n\nΘέλετε να την επαναφέρετε αυτόματα;');
+    if (shouldRestore) {
+      try {
+        const data = JSON.parse(saved);
+        applyProjectData(data);
+      } catch (err) {
+        console.error('Auto-load failed:', err);
+      }
+    }
+  }
+}
+
+</script>
+
+<!-- ═══════════════════════════════════════════════════
+     GLOSSARY TOOLTIP ELEMENT
+═══════════════════════════════════════════════════ -->
+<div id="gloss-tooltip">
+  <div id="gloss-tooltip-inner">
+    <div id="gloss-en"></div>
+    <div id="gloss-el"></div>
+    <div id="gloss-desc"></div>
+    <div id="gloss-formula" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// GLOSSARY DATABASE — Αγγλική ορολογία → Ελληνική μετάφραση
+// ═══════════════════════════════════════════════════════════════
+const GLOSSARY = {
+  // ── CORE PM TERMS ──
+  "project charter":        { el:"Χάρτης Έργου", desc:"Το επίσημο έγγραφο που εξουσιοδοτεί την έναρξη του έργου. Ορίζει στόχους, πόρους, ευθύνες και budget.", formula:null },
+  "charter":                { el:"Χάρτης Έργου", desc:"Επίσημο έγγραφο εξουσιοδότησης έναρξης του έργου.", formula:null },
+  "scope":                  { el:"Εύρος / Φάσμα Έργου", desc:"Το σύνολο των εργασιών και παραδοτέων που περιλαμβάνει το έργο. Ό,τι δεν αναφέρεται εδώ = εκτός scope.", formula:null },
+  "wbs":                    { el:"Δομή Ανάλυσης Εργασιών", desc:"Work Breakdown Structure — Ιεραρχική ανάλυση του έργου σε μικρότερα, διαχειρίσιμα Work Packages.", formula:null },
+  "work breakdown structure": { el:"Δομή Ανάλυσης Εργασιών", desc:"Ιεραρχική διάσπαση του έργου σε Work Packages. Η βάση κάθε χρονοδιαγράμματος.", formula:null },
+  "work package":           { el:"Πακέτο Εργασίας", desc:"Το μικρότερο επίπεδο WBS. Συγκεκριμένη, μετρήσιμη εργασία με ορισμένο κόστος και διάρκεια.", formula:null },
+  "milestone":              { el:"Ορόσημο", desc:"Σημαντικό γεγονός/παραδοτέο στο χρονοδιάγραμμα. Συνήθως διάρκειας 0 ημερών — σηματοδοτεί μια κρίσιμη φάση.", formula:null },
+  "deliverable":            { el:"Παραδοτέο", desc:"Το απτό αποτέλεσμα μιας εργασίας — αυτό που παραδίδεται στον πελάτη ή στην επόμενη φάση.", formula:null },
+  "baseline":               { el:"Γραμμή Βάσης / Αρχικό Πλάνο", desc:"Το εγκεκριμένο και κλειδωμένο αρχικό πλάνο (κόστος, χρόνος, scope). Σημείο σύγκρισης με τα actuals.", formula:null },
+  "stakeholder":            { el:"Ενδιαφερόμενο Μέρος", desc:"Οποιοδήποτε πρόσωπο ή οργανισμός επηρεάζει ή επηρεάζεται από το έργο (πελάτης, ανάδοχος, δημόσιες αρχές κ.λπ.).", formula:null },
+
+  // ── SCHEDULING ──
+  "gantt":                  { el:"Διάγραμμα Gantt", desc:"Οπτική αναπαράσταση του χρονοδιαγράμματος. Κάθε μπάρα = μια εργασία στον χρόνο.", formula:null },
+  "gantt chart":            { el:"Διάγραμμα Gantt", desc:"Οπτική αναπαράσταση χρονοδιαγράμματος με οριζόντιες μπάρες που δείχνουν διάρκεια και αλληλουχία εργασιών.", formula:null },
+  "critical path":          { el:"Κρίσιμη Διαδρομή", desc:"Η μακρύτερη αλληλουχία εξαρτημένων εργασιών. Καθορίζει τη συνολική διάρκεια. Καμία καθυστέρηση δεν γίνεται ανεκτή.", formula:"CPM = Longest path (ES→EF→LS→LF)" },
+  "cpm":                    { el:"Μέθοδος Κρίσιμης Διαδρομής", desc:"Critical Path Method — Αναλυτική τεχνική για τον εντοπισμό εργασιών χωρίς περιθώριο χρόνου.", formula:"Float = LF − EF (= 0 για Critical)" },
+  "float":                  { el:"Περιθώριο Χρόνου", desc:"Ο χρόνος που μπορεί να καθυστερήσει μια εργασία χωρίς να επηρεαστεί η τελική ημερομηνία παράδοσης.", formula:"Total Float = LS − ES = LF − EF" },
+  "total float":            { el:"Συνολικό Περιθώριο", desc:"Πόσες μέρες μπορεί να καθυστερήσει μια εργασία χωρίς να καθυστερήσει το έργο. Αν = 0, είναι κρίσιμη.", formula:"TF = Late Start − Early Start" },
+  "free float":             { el:"Ελεύθερο Περιθώριο", desc:"Πόσο μπορεί να καθυστερήσει μια εργασία χωρίς να επηρεάσει την ΕΠΟΜΕΝΗ εργασία (όχι το τέλος του έργου).", formula:"FF = ES(successor) − EF(activity)" },
+  "lookahead schedule":     { el:"Πρόγραμμα Πρόβλεψης", desc:"Βραχυπρόθεσμο πρόγραμμα (2-6 εβδομάδων) για άμεση εκτέλεση. Εντοπίζει εμπόδια ΠΡΙΝ δημιουργηθούν.", formula:null },
+  "dependency":             { el:"Εξάρτηση / Προαπαιτούμενο", desc:"Σχέση μεταξύ εργασιών. Finish-to-Start: Η Β ξεκινά μόνο όταν τελειώσει η Α.", formula:null },
+  "lead":                   { el:"Προπορεία", desc:"Η επόμενη εργασία ξεκινά ΠΡΙΝ τελειώσει η προηγούμενη. Επιταχύνει το πρόγραμμα.", formula:null },
+  "lag":                    { el:"Υστέρηση", desc:"Αναγκαστική αναμονή μεταξύ δύο εργασιών (π.χ. σκυρόδεμα χρειάζεται 28 ημέρες πριν φορτιστεί).", formula:null },
+
+  // ── EVM ──
+  "evm":                    { el:"Ανάλυση Κερδισμένης Αξίας", desc:"Earned Value Management — Τεχνική μέτρησης απόδοσης που συνδυάζει κόστος, χρόνο και scope σε ενιαία ανάλυση.", formula:null },
+  "earned value":           { el:"Κερδισμένη Αξία", desc:"Η αξία της εργασίας που ΠΡΑΓΜΑΤΙΚΑ ολοκληρώθηκε, εκφρασμένη σε χρήμα.", formula:"EV = % Complete × BAC" },
+  "planned value":          { el:"Προγραμματισμένη Αξία", desc:"Η αξία της εργασίας που ΕΠΡΕΠΕ να έχει γίνει μέχρι σήμερα σύμφωνα με το baseline.", formula:"PV = % Planned × BAC" },
+  "actual cost":            { el:"Πραγματικό Κόστος", desc:"Το πραγματικό ποσό χρημάτων που ξοδεύτηκε μέχρι σήμερα.", formula:"AC = Τιμολόγια + Μισθοί + Εξοπλισμός" },
+  "bac":                    { el:"Συνολικός Προϋπολογισμός", desc:"Budget at Completion — Ο εγκεκριμένος συνολικός προϋπολογισμός για ΟΛΟ το έργο.", formula:"BAC = Σύνολο εγκεκριμένου budget" },
+  "budget at completion":   { el:"Συνολικός Προϋπολογισμός", desc:"Ο αρχικός συνολικός εγκεκριμένος προϋπολογισμός του έργου.", formula:"BAC = Σ(Κόστη όλων Work Packages)" },
+  "cv":                     { el:"Απόκλιση Κόστους", desc:"Cost Variance — Θετικό = υπό τον προϋπολογισμό. Αρνητικό = υπερβάσεις κόστους.", formula:"CV = EV − AC" },
+  "cost variance":          { el:"Απόκλιση Κόστους", desc:"Θετικό CV: ξοδεύουμε λιγότερα από ό,τι έχουμε κερδίσει. Αρνητικό: πρόβλημα!", formula:"CV = EV − AC (> 0 = καλό)" },
+  "sv":                     { el:"Απόκλιση Χρονοδιαγράμματος", desc:"Schedule Variance — Θετικό = μπροστά από πρόγραμμα. Αρνητικό = πίσω από πρόγραμμα.", formula:"SV = EV − PV" },
+  "schedule variance":      { el:"Απόκλιση Χρονοδιαγράμματος", desc:"Πόσο μπροστά ή πίσω είμαστε σε αξία εργασίας, όχι σε ημέρες.", formula:"SV = EV − PV (> 0 = μπροστά)" },
+  "cpi":                    { el:"Δείκτης Απόδοσης Κόστους", desc:"Cost Performance Index — Πόσο αποτελεσματικά χρησιμοποιείς τα χρήματα. >1 = αποδοτικός, <1 = σπατάλη.", formula:"CPI = EV ÷ AC (στόχος ≥ 1.0)" },
+  "spi":                    { el:"Δείκτης Απόδοσης Χρονοδιαγράμματος", desc:"Schedule Performance Index — Πόσο γρήγορα εκτελείς σε σχέση με τον προγραμματισμό. >1 = γρηγορότερα.", formula:"SPI = EV ÷ PV (στόχος ≥ 1.0)" },
+  "eac":                    { el:"Εκτιμώμενο Τελικό Κόστος", desc:"Estimate at Completion — Πρόβλεψη για το τελικό κόστος με βάση την τρέχουσα απόδοση.", formula:"EAC = BAC ÷ CPI" },
+  "estimate at completion": { el:"Εκτιμώμενο Τελικό Κόστος", desc:"Πρόβλεψη τελικού κόστους βασισμένη στη μέχρι τώρα απόδοση CPI.", formula:"EAC = BAC ÷ CPI" },
+  "etc":                    { el:"Εκτίμηση για Ολοκλήρωση", desc:"Estimate to Complete — Πόσα χρήματα χρειάζονται ακόμα για να τελειώσει το έργο.", formula:"ETC = EAC − AC" },
+  "estimate to complete":   { el:"Εκτίμηση για Ολοκλήρωση", desc:"Το υπολειπόμενο κόστος για την ολοκλήρωση του έργου.", formula:"ETC = EAC − AC" },
+  "vac":                    { el:"Απόκλιση στη Λήξη", desc:"Variance at Completion — Πόσο πάνω ή κάτω από τον προϋπολογισμό θα καταλήξουμε. Αρνητικό = υπέρβαση.", formula:"VAC = BAC − EAC" },
+  "variance at completion": { el:"Απόκλιση στη Λήξη", desc:"Η αναμενόμενη διαφορά από τον τελικό προϋπολογισμό.", formula:"VAC = BAC − EAC (αρνητικό = υπέρβαση)" },
+  "tcpi":                   { el:"Δείκτης Αναγκαίας Απόδοσης", desc:"To Complete Performance Index — Τι CPI χρειάζεται από εδώ και πέρα για να τηρηθεί ο budget.", formula:"TCPI = (BAC−EV) ÷ (BAC−AC)" },
+  "pv":                     { el:"Προγραμματισμένη Αξία", desc:"Planned Value — Πόσο budget έπρεπε να έχει ξοδευτεί μέχρι σήμερα σύμφωνα με το baseline.", formula:"PV = BAC × % Planned" },
+  "ev":                     { el:"Κερδισμένη Αξία", desc:"Earned Value — Η αξία της εργασίας που πραγματικά ολοκληρώθηκε.", formula:"EV = BAC × % Complete" },
+  "ac":                     { el:"Πραγματικό Κόστος", desc:"Actual Cost — Τι πραγματικά ξοδεύτηκε μέχρι σήμερα.", formula:"AC = Σ πραγματικών εξόδων" },
+  "s-curve":                { el:"Καμπύλη-S", desc:"Γραφική απεικόνιση της σωρευτικής προόδου/κόστους. Έχει σχήμα S γιατί τα έργα αργούν στην αρχή, επιταχύνονται, και επιβραδύνουν στο τέλος.", formula:null },
+
+  // ── RISK ──
+  "risk register":          { el:"Μητρώο Κινδύνων", desc:"Κατάλογος όλων των κινδύνων με πιθανότητα, επίπτωση και μέτρα αντιμετώπισης.", formula:null },
+  "emv":                    { el:"Αναμενόμενη Χρηματική Αξία", desc:"Expected Monetary Value — Στατιστική εκτίμηση του χρηματικού αντίκτυπου ενός κινδύνου.", formula:"EMV = Πιθανότητα (P) × Επίπτωση (€)" },
+  "expected monetary value": { el:"Αναμενόμενη Χρηματική Αξία", desc:"Σταθμισμένη χρηματική εκτίμηση κινδύνου.", formula:"EMV = P × I (€)" },
+  "probability":            { el:"Πιθανότητα", desc:"Η πιθανότητα εμφάνισης ενός κινδύνου (0.0 = αδύνατο, 1.0 = βέβαιο).", formula:null },
+  "impact":                 { el:"Επίπτωση / Αντίκτυπος", desc:"Η ζημία (σε χρόνο ή κόστος) αν ο κίνδυνος πραγματοποιηθεί.", formula:null },
+  "contingency reserve":    { el:"Αποθεματικό Έκτακτης Ανάγκης", desc:"Επιπλέον budget για γνωστούς/άγνωστους κινδύνους. Συνήθως 5-15% του BAC.", formula:null },
+  "risk matrix":            { el:"Πίνακας Κινδύνων", desc:"Εργαλείο οπτικοποίησης κινδύνων βάσει πιθανότητας και επίπτωσης. Χρώματα: πράσινο=χαμηλός, κόκκινο=ακραίος.", formula:null },
+  "heatmap":                { el:"Χάρτης Θερμότητας", desc:"Γραφικός πίνακας που δείχνει τη συγκέντρωση κινδύνων. Τα «ζεστά» χρώματα (κόκκινο) = υψηλός κίνδυνος.", formula:null },
+  "mitigation":             { el:"Μείωση / Αντιμετώπιση Κινδύνου", desc:"Ενέργεια για μείωση της πιθανότητας ή της επίπτωσης ενός κινδύνου πριν εμφανιστεί.", formula:null },
+
+  // ── ROLES ──
+  "project manager":        { el:"Διαχειριστής Έργου", desc:"Υπεύθυνος για τη συνολική εκτέλεση, παρακολούθηση και παράδοση του έργου εντός κόστους, χρόνου και scope.", formula:null },
+  "planning engineer":      { el:"Μηχανικός Προγραμματισμού", desc:"Εξειδικευμένος στη δημιουργία/παρακολούθηση χρονοδιαγραμμάτων, S-Curves, CPM, EVM και Delay Analysis.", formula:null },
+  "sponsor":                { el:"Χρηματοδότης / Ανάθεση", desc:"Η αναθέτουσα αρχή ή ο χρηματοδότης. Έχει την τελική εξουσιοδότηση για αλλαγές scope και budget.", formula:null },
+
+  // ── KPI & REPORTING ──
+  "kpi":                    { el:"Βασικός Δείκτης Απόδοσης", desc:"Key Performance Indicator — Μετρήσιμος δείκτης για την αξιολόγηση της απόδοσης του έργου.", formula:null },
+  "dashboard":              { el:"Πίνακας Ελέγχου", desc:"Οπτική σύνοψη κρίσιμων δεδομένων έργου. Δείχνει σε «μια ματιά» αν το έργο πάει καλά.", formula:null },
+  "status report":          { el:"Έκθεση Κατάστασης", desc:"Περιοδική αναφορά (εβδομαδιαία/μηνιαία) για την πρόοδο, κόστη, ρίσκα και επόμενες δράσεις.", formula:null },
+  "on track":               { el:"Εντός Προγράμματος", desc:"Το έργο εκτελείται σύμφωνα με το εγκεκριμένο πλάνο (baseline). SPI ≈ 1.0, CPI ≈ 1.0.", formula:null },
+  "at risk":                { el:"Σε Κίνδυνο", desc:"Το έργο αντιμετωπίζει απειλές για χρόνο ή κόστος. SPI ή CPI < 0.9.", formula:null },
+  "variance":               { el:"Απόκλιση", desc:"Η διαφορά μεταξύ σχεδιασμένης και πραγματικής τιμής (κόστος, χρόνος κ.λπ.).", formula:null },
+  "forecast":               { el:"Πρόβλεψη", desc:"Εκτίμηση μελλοντικής πορείας βασισμένη στα τρέχοντα δεδομένα και τάσεις.", formula:null },
+  "performance":            { el:"Απόδοση", desc:"Μέτρο εκτέλεσης σε σχέση με τους στόχους (κόστος, χρόνος, ποιότητα).", formula:null },
+
+  // ── SCHEDULE TERMS ──
+  "early start":            { el:"Πρώιμη Έναρξη", desc:"Η νωρίτερη δυνατή ημερομηνία έναρξης μιας εργασίας βάσει Forward Pass.", formula:"ES = max(EF predecessors)" },
+  "early finish":           { el:"Πρώιμη Λήξη", desc:"Η νωρίτερη δυνατή ολοκλήρωση εργασίας.", formula:"EF = ES + Duration − 1" },
+  "late start":             { el:"Ύστατη Έναρξη", desc:"Η τελευταία επιτρεπτή έναρξη χωρίς καθυστέρηση του έργου.", formula:"LS = LF − Duration + 1" },
+  "late finish":            { el:"Ύστατη Λήξη", desc:"Η τελευταία επιτρεπτή ολοκλήρωση χωρίς καθυστέρηση έργου.", formula:"LF = min(LS successors)" },
+  "forward pass":           { el:"Προωθητική Ανάλυση", desc:"Υπολογισμός ES/EF από αρχή προς τέλος δικτύου. Βρίσκει νωρίτερες δυνατές ημερομηνίες.", formula:null },
+  "backward pass":          { el:"Οπισθοδρομική Ανάλυση", desc:"Υπολογισμός LS/LF από τέλος προς αρχή. Βρίσκει ύστατες επιτρεπτές ημερομηνίες.", formula:null },
+  "acceleration plan":      { el:"Πρόγραμμα Επιτάχυνσης", desc:"Σχέδιο για την ανάκτηση χαμένου χρόνου: νυκτερινές βάρδιες, επιπλέον πόροι, παράλληλες εργασίες.", formula:null },
+  "crashing":               { el:"Επιτάχυνση με Επιπλέον Πόρους", desc:"Τεχνική μείωσης διάρκειας με προσθήκη πόρων στην κρίσιμη διαδρομή. Αυξάνει κόστος.", formula:null },
+  "fast-tracking":          { el:"Παραλληλισμός Εργασιών", desc:"Εκτέλεση εργασιών παράλληλα που κανονικά θα γίνονταν διαδοχικά. Αυξάνει ρίσκο.", formula:null },
+
+  // ── RESOURCES ──
+  "resource":               { el:"Πόρος", desc:"Οτιδήποτε χρειάζεται για να εκτελεστεί μια εργασία: εργατοδύναμη, εξοπλισμός, υλικά, χρήμα.", formula:null },
+  "resource leveling":      { el:"Ισοστάθμιση Πόρων", desc:"Αναδιάταξη εργασιών ώστε οι πόροι να χρησιμοποιούνται ομοιόμορφα χωρίς υπερφόρτωση.", formula:null },
+  "cash flow":              { el:"Ταμειακή Ροή", desc:"Χρονική κατανομή εισροών/εκροών χρημάτων. Κρίσιμο για βιωσιμότητα εργολάβου.", formula:null },
+  "cost loading":           { el:"Κοστολόγηση Δραστηριοτήτων", desc:"Ανάθεση κόστους σε κάθε εργασία του χρονοδιαγράμματος για παραγωγή Cash Flow Forecast.", formula:null },
+  "resource histogram":     { el:"Ιστόγραμμα Πόρων", desc:"Γραφική απεικόνιση χρήσης πόρων στο χρόνο. Εντοπίζει κορυφές και υπερφόρτωση.", formula:null },
+
+  // ── CLAIMS & DELAYS ──
+  "delay analysis":         { el:"Ανάλυση Καθυστερήσεων", desc:"Τεχνική αποδοχής ευθύνης για καθυστερήσεις. Βάση για απαιτήσεις παράτασης χρόνου (EOT).", formula:null },
+  "eot":                    { el:"Παράταση Χρόνου", desc:"Extension of Time — Επίσημη αίτηση παράτασης της συμβατικής ημερομηνίας λόγω γεγονότων εκτός ελέγχου αναδόχου.", formula:null },
+  "eot claim":              { el:"Αξίωση Παράτασης Χρόνου", desc:"Επίσημο αίτημα για παράταση της συμβατικής ημερομηνίας παράδοσης βάσει τεκμηριωμένης ανάλυσης.", formula:null },
+  "tia":                    { el:"Ανάλυση Χρονικής Επίπτωσης", desc:"Time Impact Analysis — Τεχνική για τον υπολογισμό πόσες μέρες καθυστέρησε το έργο λόγω ενός συγκεκριμένου γεγονότος.", formula:null },
+  "time impact analysis":   { el:"Ανάλυση Χρονικής Επίπτωσης", desc:"Ποσοτικοποίηση της καθυστέρησης στην κρίσιμη διαδρομή λόγω συγκεκριμένου γεγονότος.", formula:null },
+  "concurrent delay":       { el:"Ταυτόχρονη Καθυστέρηση", desc:"Όταν δύο καθυστερήσεις (μία από ανάδοχο, μία από πελάτη) συμβαίνουν ταυτόχρονα. Νομικά περίπλοκο.", formula:null },
+
+  // ── PMBOK / METHODOLOGIES ──
+  "pmbok":                  { el:"Οδηγός Γνώσης Διαχείρισης Έργων", desc:"Project Management Body of Knowledge — Το βασικό εγχειρίδιο του PMI για τη διαχείριση έργων.", formula:null },
+  "agile":                  { el:"Ευέλικτη Μεθοδολογία", desc:"Επαναληπτική, τμηματική εκτέλεση. Ιδανικό για έργα με μεταβλητές απαιτήσεις. Χρησιμοποιεί Sprints.", formula:null },
+  "waterfall":              { el:"Καταρράκτης (Σειριακή Μέθοδος)", desc:"Κάθε φάση ολοκληρώνεται πλήρως πριν ξεκινήσει η επόμενη. Ιδανικό για κατασκευαστικά έργα.", formula:null },
+  "hybrid":                 { el:"Υβριδική Μέθοδος", desc:"Συνδυασμός Waterfall και Agile. Χρησιμοποιείται σε μεγάλα έργα με τμήματα διαφορετικής φύσης.", formula:null },
+  "scrum":                  { el:"Πλαίσιο Scrum", desc:"Agile framework με σύντομα Sprints (2-4 εβδομάδων), καθορισμένους ρόλους και τελετουργίες.", formula:null },
+  "kanban":                 { el:"Πίνακας Kanban", desc:"Οπτικό σύστημα διαχείρισης ροής εργασίας. Στήλες: To Do → In Progress → Done.", formula:null },
+  "lean":                   { el:"Λιτή Παραγωγή/Διαχείριση", desc:"Μεθοδολογία εξάλειψης σπατάλης. Εστιάζει στη δημιουργία αξίας χωρίς περιττές διαδικασίες.", formula:null },
+  "six sigma":              { el:"Έξι Σίγμα", desc:"Στατιστική μεθοδολογία ελαχιστοποίησης ελαττωμάτων. DMAIC: Define-Measure-Analyze-Improve-Control.", formula:null },
+  "prince2":                { el:"PRINCE2 Μεθοδολογία", desc:"PRojects IN Controlled Environments — Βρετανική μεθοδολογία PM με έμφαση στη διακυβέρνηση και τεκμηρίωση.", formula:null },
+
+  // ── DOCUMENTATION ──
+  "raci":                   { el:"Πίνακας Ευθυνών RACI", desc:"Responsible-Accountable-Consulted-Informed. Ορίζει ποιος κάνει τι σε κάθε δραστηριότητα.", formula:null },
+  "raci matrix":            { el:"Πίνακας RACI", desc:"Εργαλείο για τον ορισμό ευθυνών: R=Εκτελεί, A=Εγκρίνει, C=Συμβουλεύεται, I=Ενημερώνεται.", formula:null },
+  "project plan":           { el:"Σχέδιο Έργου", desc:"Ολοκληρωμένο έγγραφο που περιλαμβάνει scope, χρονοδιάγραμμα, resources, κόστη, κινδύνους.", formula:null },
+  "change log":             { el:"Μητρώο Αλλαγών", desc:"Κατάλογος όλων των εγκεκριμένων αλλαγών στο scope, budget ή χρονοδιάγραμμα.", formula:null },
+  "lessons learned":        { el:"Διδάγματα Έργου", desc:"Τεκμηρίωση όσων πήγαν καλά ή άσχημα, για αξιοποίηση σε μελλοντικά έργα.", formula:null },
+  "issue tracker":          { el:"Παρακολούθηση Προβλημάτων", desc:"Κατάλογος ενεργών προβλημάτων που χρειάζονται άμεση επίλυση.", formula:null },
+
+  // ── SOFTWARE ──
+  "primavera p6":           { el:"Λογισμικό Primavera P6", desc:"Oracle Primavera P6 — Το κορυφαίο λογισμικό χρονοδιαγράμματος για μεγάλα κατασκευαστικά έργα.", formula:null },
+  "microsoft project":      { el:"Microsoft Project", desc:"Δημοφιλές λογισμικό PM της Microsoft. Ιδανικό για μέτρια έργα.", formula:null },
+  "power bi":               { el:"Power BI", desc:"Εργαλείο οπτικοποίησης δεδομένων της Microsoft. Συνδέεται με P6/Excel για αυτόματα dashboards.", formula:null },
+};
+
+// ═══════════════════════════════════════════════════════════════
+// GLOSSARY ENGINE
+// ═══════════════════════════════════════════════════════════════
+function initGlossary() {
+  const tooltip = document.getElementById('gloss-tooltip');
+  const elEn    = document.getElementById('gloss-en');
+  const elEl    = document.getElementById('gloss-el');
+  const elDesc  = document.getElementById('gloss-desc');
+  const elForm  = document.getElementById('gloss-formula');
+
+  let hideTimer = null;
+
+  // ── Wrap all matching text nodes ──
+  function wrapTextNodes(root) {
+    if (!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: n => {
+        const p = n.parentElement;
+        if (!p) return NodeFilter.FILTER_REJECT;
+        const tag = p.tagName;
+        if (['SCRIPT','STYLE','INPUT','TEXTAREA','SELECT'].includes(tag)) return NodeFilter.FILTER_REJECT;
+        if (p.classList.contains('gloss')) return NodeFilter.FILTER_REJECT;
+        if (p.closest('.gloss')) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+
+    const nodes = [];
+    let n;
+    while ((n = walker.nextNode())) nodes.push(n);
+
+    // Sort glossary keys by length desc (longest match first)
+    const keys = Object.keys(GLOSSARY).sort((a,b) => b.length - a.length);
+
+    nodes.forEach(textNode => {
+      let html = textNode.textContent;
+      let replaced = false;
+
+      keys.forEach(key => {
+        const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const rx = new RegExp(`(?<![\\w-])(${escaped})(?![\\w-])`, 'gi');
+        if (rx.test(html)) {
+          html = html.replace(rx, (match) => {
+            replaced = true;
+            return `<span class="gloss" data-key="${key.toLowerCase()}">${match}</span>`;
+          });
+        }
+      });
+
+      if (replaced) {
+        const span = document.createElement('span');
+        span.innerHTML = html;
+        textNode.parentNode.replaceChild(span, textNode);
+      }
+    });
+  }
+
+  // Wrap on initial load
+  wrapTextNodes(document.querySelector('.main'));
+
+  // Re-wrap after tab switch (for dynamically built panels)
+  const origSwitch = window.switchTab;
+  window.switchTab = function(name) {
+    origSwitch(name);
+    setTimeout(() => wrapTextNodes(document.getElementById('panel-' + name)), 350);
+  };
+
+  // ── Show tooltip ──
+  function showTooltip(e) {
+    const key = e.currentTarget.dataset.key;
+    const data = GLOSSARY[key];
+    if (!data) return;
+
+    clearTimeout(hideTimer);
+
+    elEn.textContent   = key.toUpperCase();
+    elEl.textContent   = data.el;
+    elDesc.textContent = data.desc;
+
+    if (data.formula) {
+      elForm.textContent = '⟹ ' + data.formula;
+      elForm.style.display = 'block';
+    } else {
+      elForm.style.display = 'none';
+    }
+
+    positionTooltip(e);
+    tooltip.classList.add('visible');
+  }
+
+  function positionTooltip(e) {
+    const TW = 290, TH = 120;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let x = e.clientX + 12, y = e.clientY + 18;
+    if (x + TW > vw - 8) x = e.clientX - TW - 8;
+    if (y + TH > vh - 8) y = e.clientY - TH - 8;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top  = y + 'px';
+  }
+
+  function hideTooltip() {
+    hideTimer = setTimeout(() => tooltip.classList.remove('visible'), 120);
+  }
+
+  // ── Event delegation ──
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest('.gloss');
+    if (el) showTooltip({ currentTarget: el, clientX: e.clientX, clientY: e.clientY });
+  });
+  document.addEventListener('mousemove', e => {
+    if (tooltip.classList.contains('visible')) positionTooltip(e);
+  });
+  document.addEventListener('mouseout', e => {
+    if (e.target.closest('.gloss')) hideTooltip();
+  });
+}
+</script>
+</body>
+</html>
